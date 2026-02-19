@@ -1,0 +1,16 @@
+[package]
+name = "k1s-types"
+description = "Kubernetes resource types for k1s"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+uuid = { workspace = true }
+thiserror = { workspace = true }
+k8s-openapi = { workspace = true }
+base64 = { workspace = true }

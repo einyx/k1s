@@ -1,0 +1,18 @@
+[package]
+name = "k1s-client"
+description = "Internal API client for k1s"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+k1s-types = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+futures = { workspace = true }
+tracing = { workspace = true }

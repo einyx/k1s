@@ -1,0 +1,22 @@
+[package]
+name = "k1s-p2p"
+description = "P2P networking for k1s cluster nodes"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+k1s-types = { workspace = true }
+k1s-storage = { workspace = true }
+libp2p = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+async-trait = { workspace = true }
+chrono = { workspace = true }

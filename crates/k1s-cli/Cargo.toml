@@ -1,0 +1,39 @@
+[package]
+name = "k1s-cli"
+description = "CLI for k1s"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "k1s"
+path = "src/main.rs"
+
+[dependencies]
+k1s-types = { workspace = true }
+k1s-api-server = { workspace = true }
+k1s-storage = { workspace = true }
+k1s-scheduler = { workspace = true }
+k1s-controller-manager = { workspace = true }
+k1s-kubelet = { workspace = true }
+k1s-networking = { workspace = true }
+k1s-client = { workspace = true }
+clap = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_yaml = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+hostname = "0.3"
+num_cpus = "1.16"
+uuid = { workspace = true }
+chrono = { workspace = true }
+shell-words = "1.1"
+base64 = { workspace = true }
+bollard = { workspace = true }
+futures = { workspace = true }

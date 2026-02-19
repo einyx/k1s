@@ -1,0 +1,32 @@
+[package]
+name = "k1s-kubelet"
+description = "Node agent with container runtime support for k1s"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+k1s-types = { workspace = true }
+k1s-client = { workspace = true }
+k1s-storage = { workspace = true }
+k1s-networking = { workspace = true }
+bollard = { workspace = true }
+tonic = { workspace = true }
+prost = { workspace = true }
+prost-types = { workspace = true }
+tokio = { workspace = true }
+tokio-stream = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+futures = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+base64 = { workspace = true }
+http = "1.1"
+tower = { workspace = true }
+hyper-util = "0.1"

@@ -1,0 +1,105 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/k1s-types",
+    "crates/k1s-client",
+    "crates/k1s-utils",
+    "crates/k1s-storage",
+    "crates/k1s-api-server",
+    "crates/k1s-scheduler",
+    "crates/k1s-controller-manager",
+    "crates/k1s-kubelet",
+    "crates/k1s-networking",
+    "crates/k1s-p2p",
+    "crates/k1s-dns",
+    "crates/k1s-cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Alessio"]
+license = "Apache-2.0"
+repository = "https://github.com/alessio/k1s"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-stream = { version = "0.1", features = ["sync"] }
+
+# Web framework
+axum = { version = "0.7", features = ["ws", "macros"] }
+axum-server = { version = "0.6", features = ["tls-rustls"] }
+tower = { version = "0.4", features = ["util", "timeout"] }
+tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
+hyper = { version = "1.1", features = ["full"] }
+
+# TLS / Certificates
+rcgen = { version = "0.12", features = ["pem"] }
+rustls-pemfile = "2.0"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# Database
+sled = "0.34"
+
+# Container runtimes
+bollard = "0.16"
+tonic = "0.11"
+prost = "0.12"
+prost-types = "0.12"
+
+# Kubernetes types
+k8s-openapi = { version = "0.21", features = ["v1_29"] }
+kube = { version = "0.88", default-features = false, features = ["runtime", "derive"] }
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Logging & tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+futures = "0.3"
+bytes = "1.5"
+rand = "0.8"
+base64 = "0.21"
+sha2 = "0.10"
+regex = "1.10"
+
+# Networking
+ipnetwork = "0.20"
+nix = { version = "0.27", features = ["net", "process", "signal"] }
+
+# P2P networking
+libp2p = { version = "0.53", features = ["tokio", "tcp", "noise", "yamux", "gossipsub", "mdns", "identify", "kad", "request-response", "macros", "cbor", "serde"] }
+
+# Internal crates
+k1s-types = { path = "crates/k1s-types" }
+k1s-client = { path = "crates/k1s-client" }
+k1s-utils = { path = "crates/k1s-utils" }
+k1s-storage = { path = "crates/k1s-storage" }
+k1s-api-server = { path = "crates/k1s-api-server" }
+k1s-scheduler = { path = "crates/k1s-scheduler" }
+k1s-controller-manager = { path = "crates/k1s-controller-manager" }
+k1s-kubelet = { path = "crates/k1s-kubelet" }
+k1s-networking = { path = "crates/k1s-networking" }
+k1s-p2p = { path = "crates/k1s-p2p" }
+k1s-dns = { path = "crates/k1s-dns" }
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"

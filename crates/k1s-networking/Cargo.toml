@@ -1,0 +1,19 @@
+[package]
+name = "k1s-networking"
+description = "CNI and kube-proxy networking for k1s"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+k1s-types = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+async-trait = { workspace = true }
+ipnetwork = { workspace = true }
+nix = { workspace = true }
