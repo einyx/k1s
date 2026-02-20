@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use crate::meta::ObjectMeta;
 use crate::resource::{Resource, ResourceScope};
 
+use super::common::ObjectReference;
+
 /// Event is a report of an event somewhere in the cluster
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -148,38 +150,3 @@ pub struct EventSource {
     pub host: Option<String>,
 }
 
-/// ObjectReference contains enough information to let you inspect or modify the referred object
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ObjectReference {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub api_version: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub kind: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub namespace: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uid: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub resource_version: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub field_path: Option<String>,
-}
-
-impl ObjectReference {
-    /// Create a reference from resource metadata
-    pub fn from_resource<R: Resource>(resource: &R, api_version: &str, kind: &str) -> Self {
-        let meta = resource.metadata();
-        Self {
-            api_version: Some(api_version.to_string()),
-            kind: Some(kind.to_string()),
-            name: Some(meta.name.clone()),
-            namespace: meta.namespace.clone(),
-            uid: Some(meta.uid.clone()),
-            resource_version: Some(meta.resource_version.clone()),
-            field_path: None,
-        }
-    }
-}

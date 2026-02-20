@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 use crate::meta::ObjectMeta;
 use crate::resource::{Resource, ResourceScope};
 
+use super::common::{NodeSelector, ObjectReference};
 use super::volume::HostPathVolumeSource;
 
 /// PersistentVolume (PV) is a storage resource provisioned by an administrator
@@ -149,60 +150,12 @@ pub enum PersistentVolumePhase {
     Pending,
 }
 
-/// ObjectReference for ClaimRef
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ObjectReference {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub api_version: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub kind: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub namespace: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uid: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub resource_version: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub field_path: Option<String>,
-}
-
 /// VolumeNodeAffinity defines constraints on which nodes a volume can be accessed from
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct VolumeNodeAffinity {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub required: Option<NodeSelector>,
-}
-
-/// NodeSelector represents a node selector
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeSelector {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub node_selector_terms: Vec<NodeSelectorTerm>,
-}
-
-/// NodeSelectorTerm defines node selector requirements
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeSelectorTerm {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub match_expressions: Vec<NodeSelectorRequirement>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub match_fields: Vec<NodeSelectorRequirement>,
-}
-
-/// NodeSelectorRequirement is a requirement for a node selector
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeSelectorRequirement {
-    pub key: String,
-    pub operator: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub values: Vec<String>,
 }
 
 // Volume sources

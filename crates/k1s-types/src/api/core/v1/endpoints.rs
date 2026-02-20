@@ -6,6 +6,7 @@ use crate::meta::{ObjectMeta, TypeMeta};
 use crate::resource::{Resource, ResourceScope};
 use serde::{Deserialize, Serialize};
 
+use super::common::ObjectReference;
 use super::container::Protocol;
 
 /// Endpoints is a collection of endpoints that implement the actual service
@@ -129,53 +130,6 @@ impl EndpointAddress {
     pub fn with_target_ref(mut self, target_ref: ObjectReference) -> Self {
         self.target_ref = Some(target_ref);
         self
-    }
-}
-
-/// ObjectReference contains enough information to let you locate the referenced object
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ObjectReference {
-    /// API version of the referent
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub api_version: Option<String>,
-    /// Kind of the referent
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub kind: Option<String>,
-    /// Name of the referent
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    /// Namespace of the referent
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub namespace: Option<String>,
-    /// UID of the referent
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uid: Option<String>,
-    /// Specific resourceVersion to which this reference is made
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub resource_version: Option<String>,
-    /// If referring to a piece of an object instead of an entire object
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub field_path: Option<String>,
-}
-
-impl ObjectReference {
-    /// Create an object reference from a Pod
-    pub fn from_pod(
-        name: &str,
-        namespace: &str,
-        uid: &str,
-        resource_version: &str,
-    ) -> Self {
-        Self {
-            api_version: Some("v1".to_string()),
-            kind: Some("Pod".to_string()),
-            name: Some(name.to_string()),
-            namespace: Some(namespace.to_string()),
-            uid: Some(uid.to_string()),
-            resource_version: Some(resource_version.to_string()),
-            field_path: None,
-        }
     }
 }
 

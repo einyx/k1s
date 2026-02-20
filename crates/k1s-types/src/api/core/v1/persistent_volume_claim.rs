@@ -7,6 +7,7 @@ use crate::api::apps::v1::LabelSelector;
 use crate::meta::ObjectMeta;
 use crate::resource::{Resource, ResourceScope};
 
+use super::common::ResourceRequirements;
 use super::persistent_volume::{PersistentVolumeAccessMode, PersistentVolumeMode};
 
 /// PersistentVolumeClaim (PVC) is a user's request for a persistent volume
@@ -120,18 +121,6 @@ pub struct PersistentVolumeClaimCondition {
     pub reason: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub message: Option<String>,
-}
-
-/// ResourceRequirements describes compute resource requirements
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceRequirements {
-    /// Limits describes the maximum amount of resources allowed
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub limits: BTreeMap<String, String>,
-    /// Requests describes the minimum amount of resources required
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub requests: BTreeMap<String, String>,
 }
 
 /// TypedLocalObjectReference contains enough information to locate a typed referenced object inside the same namespace

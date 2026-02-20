@@ -6,6 +6,7 @@ use crate::resource::{Resource, ResourceScope};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+use super::common::{LocalObjectReference, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm};
 use super::container::{Container, ContainerStatus, SecurityContext};
 use super::volume::Volume;
 
@@ -268,12 +269,6 @@ pub struct SeccompProfile {
     pub localhost_profile: Option<String>,
 }
 
-/// Local object reference
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-pub struct LocalObjectReference {
-    pub name: String,
-}
-
 /// Affinity rules
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -293,30 +288,6 @@ pub struct NodeAffinity {
     pub required_during_scheduling_ignored_during_execution: Option<NodeSelector>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub preferred_during_scheduling_ignored_during_execution: Vec<PreferredSchedulingTerm>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeSelector {
-    pub node_selector_terms: Vec<NodeSelectorTerm>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeSelectorTerm {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub match_expressions: Vec<NodeSelectorRequirement>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub match_fields: Vec<NodeSelectorRequirement>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct NodeSelectorRequirement {
-    pub key: String,
-    pub operator: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub values: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]

@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
+pub use super::common::ResourceRequirements;
+
 /// Container definition
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -223,16 +225,6 @@ pub enum MountPropagation {
     None,
     HostToContainer,
     Bidirectional,
-}
-
-/// Resource requirements
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ResourceRequirements {
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub limits: BTreeMap<String, String>,
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub requests: BTreeMap<String, String>,
 }
 
 /// Health probe

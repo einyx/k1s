@@ -1,5 +1,6 @@
 //! Core v1 API resources
 
+mod common;
 mod config_map;
 mod container;
 mod endpoints;
@@ -14,6 +15,7 @@ mod service;
 mod service_account;
 mod volume;
 
+pub use common::*;
 pub use config_map::*;
 pub use container::*;
 pub use endpoints::*;

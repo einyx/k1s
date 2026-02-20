@@ -1,12 +1,17 @@
 //! OpenAPI schema generation for kubectl validation
 
-use axum::response::IntoResponse;
+use axum::extract::Request;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::Json;
 use serde_json::{json, Value};
 
 /// Generate a minimal OpenAPI v2 (Swagger) schema for k1s resources
 /// This provides enough information for kubectl to validate resources
-pub async fn openapi_v2() -> impl IntoResponse {
+/// Note: kubectl may request protobuf format, but we always return JSON which it can handle
+pub async fn openapi_v2(_headers: HeaderMap) -> impl IntoResponse {
+    // Note: We ignore the Accept header and always return JSON
+    // kubectl accepts JSON even if it prefers protobuf
     let schema = json!({
         "swagger": "2.0",
         "info": {
@@ -64,31 +69,21 @@ pub async fn openapi_v2() -> impl IntoResponse {
         }
     });
 
-    Json(schema)
+    // Return JSON response
+    let schema_json = serde_json::to_string(&schema).unwrap();
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("content-type", "application/json")
+        .body(axum::body::Body::from(schema_json))
+        .unwrap()
 }
 
 /// Generate OpenAPI v3 schema
 pub async fn openapi_v3() -> impl IntoResponse {
-    // OpenAPI v3 discovery document listing available group-versions
-    // This tells kubectl where to find the actual schemas for each API group
+    // Return empty paths to indicate v3 is not fully supported
+    // This forces kubectl to fall back to OpenAPI v2
     let discovery = json!({
-        "paths": {
-            "api/v1": {
-                "serverRelativeURL": "/openapi/v3/api/v1?hash=placeholder"
-            },
-            "apis/apps/v1": {
-                "serverRelativeURL": "/openapi/v3/apis/apps/v1?hash=placeholder"
-            },
-            "apis/batch/v1": {
-                "serverRelativeURL": "/openapi/v3/apis/batch/v1?hash=placeholder"
-            },
-            "apis/rbac.authorization.k8s.io/v1": {
-                "serverRelativeURL": "/openapi/v3/apis/rbac.authorization.k8s.io/v1?hash=placeholder"
-            },
-            "apis/storage.k8s.io/v1": {
-                "serverRelativeURL": "/openapi/v3/apis/storage.k8s.io/v1?hash=placeholder"
-            }
-        }
+        "paths": {}
     });
 
     Json(discovery)

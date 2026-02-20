@@ -64,6 +64,8 @@ pub async fn admission_webhook_middleware(
     let uri = request.uri().clone();
     let path = uri.path();
 
+    tracing::info!("🔍 Webhook middleware called: {} {}", method, path);
+
     // Only intercept resource creation and updates
     let operation = match method.as_str() {
         "POST" => Operation::Create,

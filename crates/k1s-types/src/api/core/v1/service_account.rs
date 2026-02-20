@@ -5,6 +5,8 @@ use serde::{Deserialize, Serialize};
 use crate::meta::ObjectMeta;
 use crate::resource::{Resource, ResourceScope};
 
+use super::common::{LocalObjectReference, ObjectReference};
+
 /// ServiceAccount binds together a name and secrets
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -63,29 +65,4 @@ impl Resource for ServiceAccount {
     fn metadata_mut(&mut self) -> &mut ObjectMeta {
         &mut self.metadata
     }
-}
-
-/// ObjectReference contains enough information to let you locate the referenced object
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct ObjectReference {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub api_version: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub kind: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub namespace: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub uid: Option<String>,
-}
-
-/// LocalObjectReference contains enough information to let you locate a local object
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct LocalObjectReference {
-    /// Name of the referent
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
 }
