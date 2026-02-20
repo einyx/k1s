@@ -29,7 +29,7 @@ tokio-stream = { version = "0.1", features = ["sync"] }
 
 # Web framework
 axum = { version = "0.7", features = ["ws", "macros"] }
-axum-server = { version = "0.6", features = ["tls-rustls"] }
+axum-server = { version = "0.7", features = ["tls-rustls"] }
 tower = { version = "0.4", features = ["util", "timeout"] }
 tower-http = { version = "0.5", features = ["cors", "trace", "compression-gzip"] }
 hyper = { version = "1.1", features = ["full"] }
@@ -76,6 +76,7 @@ bytes = "1.5"
 rand = "0.8"
 base64 = "0.21"
 sha2 = "0.10"
+json-patch = "2.0"
 regex = "1.10"
 
 # Networking
@@ -86,17 +87,17 @@ nix = { version = "0.27", features = ["net", "process", "signal"] }
 libp2p = { version = "0.53", features = ["tokio", "tcp", "noise", "yamux", "gossipsub", "mdns", "identify", "kad", "request-response", "macros", "cbor", "serde"] }
 
 # Internal crates
-k1s-types = { path = "crates/k1s-types" }
-k1s-client = { path = "crates/k1s-client" }
-k1s-utils = { path = "crates/k1s-utils" }
-k1s-storage = { path = "crates/k1s-storage" }
-k1s-api-server = { path = "crates/k1s-api-server" }
-k1s-scheduler = { path = "crates/k1s-scheduler" }
-k1s-controller-manager = { path = "crates/k1s-controller-manager" }
-k1s-kubelet = { path = "crates/k1s-kubelet" }
-k1s-networking = { path = "crates/k1s-networking" }
-k1s-p2p = { path = "crates/k1s-p2p" }
-k1s-dns = { path = "crates/k1s-dns" }
+k1s-types = { version = "0.1.0", path = "crates/k1s-types" }
+k1s-client = { version = "0.1.0", path = "crates/k1s-client" }
+k1s-utils = { version = "0.1.0", path = "crates/k1s-utils" }
+k1s-storage = { version = "0.1.0", path = "crates/k1s-storage" }
+k1s-api-server = { version = "0.1.0", path = "crates/k1s-api-server" }
+k1s-scheduler = { version = "0.1.0", path = "crates/k1s-scheduler" }
+k1s-controller-manager = { version = "0.1.0", path = "crates/k1s-controller-manager" }
+k1s-kubelet = { version = "0.1.0", path = "crates/k1s-kubelet" }
+k1s-networking = { version = "0.1.0", path = "crates/k1s-networking" }
+k1s-p2p = { version = "0.1.0", path = "crates/k1s-p2p" }
+k1s-dns = { version = "0.1.0", path = "crates/k1s-dns" }
 
 [profile.release]
 lto = true

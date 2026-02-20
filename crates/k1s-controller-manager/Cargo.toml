@@ -5,6 +5,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
 k1s-types = { workspace = true }
@@ -19,3 +20,4 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 async-trait = { workspace = true }
 futures = { workspace = true }
+chrono = { workspace = true }

@@ -5,15 +5,15 @@ mod iptables;
 pub use iptables::IptablesProxy;
 
 use async_trait::async_trait;
-use k1s_types::Service;
+use k1s_types::{Endpoints, Service};
 
 use crate::NetworkResult;
 
 /// Service proxy trait
 #[async_trait]
 pub trait ServiceProxy: Send + Sync {
-    /// Sync service rules
-    async fn sync_service(&self, service: &Service) -> NetworkResult<()>;
+    /// Sync service rules with endpoints
+    async fn sync_service(&self, service: &Service, endpoints: Option<&Endpoints>) -> NetworkResult<()>;
 
     /// Remove service rules
     async fn remove_service(&self, service: &Service) -> NetworkResult<()>;

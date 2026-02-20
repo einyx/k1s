@@ -58,6 +58,14 @@ enum Commands {
     Ps(apply::PsArgs),
 
     // === kubectl-compatible commands ===
+    /// kubectl-compatible CLI (e.g., k1s kubectl get pods)
+    #[command(subcommand)]
+    Kubectl(KubectlCommands),
+
+    /// docker-compose compatible CLI (e.g., k1s compose up)
+    #[command(subcommand)]
+    Compose(ComposeCommands),
+
     /// Get resources
     Get(kubectl::GetArgs),
 
@@ -85,6 +93,40 @@ enum Commands {
     Cri(CriCommands),
 
     /// Convert docker-compose.yml to Kubernetes manifests
+    Convert(ConvertArgs),
+}
+
+/// kubectl-compatible subcommands
+#[derive(Subcommand)]
+enum KubectlCommands {
+    /// Get resources
+    Get(kubectl::GetArgs),
+    /// Create resources
+    Create(kubectl::CreateArgs),
+    /// Delete resources
+    Delete(kubectl::DeleteArgs),
+    /// Run a container
+    Run(kubectl::RunArgs),
+    /// Describe resources
+    Describe(kubectl::DescribeArgs),
+    /// View logs
+    Logs(kubectl::LogsArgs),
+    /// Execute command in container
+    Exec(kubectl::ExecArgs),
+    /// Apply configuration
+    Apply(apply::ApplyArgs),
+}
+
+/// docker-compose compatible subcommands
+#[derive(Subcommand)]
+enum ComposeCommands {
+    /// Start services
+    Up(apply::UpArgs),
+    /// Stop services
+    Down(apply::DownArgs),
+    /// List containers
+    Ps(apply::PsArgs),
+    /// Convert to Kubernetes manifests
     Convert(ConvertArgs),
 }
 
@@ -158,7 +200,13 @@ async fn main() -> Result<()> {
         Commands::Down(args) => apply::run_down(args).await,
         Commands::Ps(args) => apply::run_ps(args).await,
 
-        // kubectl-compatible commands
+        // kubectl subcommand
+        Commands::Kubectl(cmd) => run_kubectl(cmd).await,
+
+        // compose subcommand
+        Commands::Compose(cmd) => run_compose(cmd).await,
+
+        // kubectl-compatible commands (also at top level)
         Commands::Get(args) => kubectl::get_resources(args).await,
         Commands::Create(args) => kubectl::create_resource(args).await,
         Commands::Delete(args) => kubectl::delete_resource(args).await,
@@ -170,6 +218,28 @@ async fn main() -> Result<()> {
         // Utility commands
         Commands::Cri(cmd) => run_cri(cmd).await,
         Commands::Convert(args) => run_convert(args).await,
+    }
+}
+
+async fn run_kubectl(cmd: KubectlCommands) -> Result<()> {
+    match cmd {
+        KubectlCommands::Get(args) => kubectl::get_resources(args).await,
+        KubectlCommands::Create(args) => kubectl::create_resource(args).await,
+        KubectlCommands::Delete(args) => kubectl::delete_resource(args).await,
+        KubectlCommands::Run(args) => kubectl::run_pod(args).await,
+        KubectlCommands::Describe(args) => kubectl::describe_resource(args).await,
+        KubectlCommands::Logs(args) => kubectl::get_logs(args).await,
+        KubectlCommands::Exec(args) => kubectl::exec_command(args).await,
+        KubectlCommands::Apply(args) => apply::run_apply(args).await,
+    }
+}
+
+async fn run_compose(cmd: ComposeCommands) -> Result<()> {
+    match cmd {
+        ComposeCommands::Up(args) => apply::run_up(args).await,
+        ComposeCommands::Down(args) => apply::run_down(args).await,
+        ComposeCommands::Ps(args) => apply::run_ps(args).await,
+        ComposeCommands::Convert(args) => run_convert(args).await,
     }
 }
 

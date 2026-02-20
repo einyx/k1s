@@ -115,6 +115,7 @@ impl DeploymentController {
                 replicas: spec.replicas,
                 selector: LabelSelector {
                     match_labels: selector_labels,
+                    match_expressions: Vec::new(),
                 },
                 template: pod_template,
                 min_ready_seconds: spec.min_ready_seconds,

@@ -1,5 +1,6 @@
 //! Pod resource types
 
+use crate::api::apps::v1::{LabelSelector, LabelSelectorRequirement};
 use crate::meta::{ObjectMeta, TypeMeta};
 use crate::resource::{Resource, ResourceScope};
 use serde::{Deserialize, Serialize};
@@ -360,25 +361,6 @@ pub struct PodAffinityTerm {
 pub struct WeightedPodAffinityTerm {
     pub weight: i32,
     pub pod_affinity_term: PodAffinityTerm,
-}
-
-/// Label selector
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct LabelSelector {
-    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
-    pub match_labels: BTreeMap<String, String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub match_expressions: Vec<LabelSelectorRequirement>,
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
-pub struct LabelSelectorRequirement {
-    pub key: String,
-    pub operator: String,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub values: Vec<String>,
 }
 
 /// Toleration

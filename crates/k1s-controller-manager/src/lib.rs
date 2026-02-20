@@ -45,6 +45,11 @@ impl ControllerManager {
                 Box::new(controllers::ReplicaSetController::new(storage.clone())),
                 Box::new(controllers::DeploymentController::new(storage.clone())),
                 Box::new(controllers::EndpointsController::new(storage.clone())),
+                Box::new(controllers::JobController::new(storage.clone())),
+                Box::new(controllers::CronJobController::new(storage.clone())),
+                Box::new(controllers::DaemonSetController::new(storage.clone())),
+                Box::new(controllers::StatefulSetController::new(storage.clone())),
+                Box::new(controllers::PvPvcController::new(storage.clone())),
             ],
             reconcile_interval: Duration::from_secs(10),
         }

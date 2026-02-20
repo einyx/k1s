@@ -1,7 +1,5 @@
 //! Generic resource handlers
 
-use std::sync::Arc;
-
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
@@ -9,7 +7,7 @@ use axum::Json;
 use serde::Deserialize;
 
 use k1s_storage::{ResourceStore, Storage};
-use k1s_types::{Resource, ResourceList};
+use k1s_types::{ParsedFieldSelector, ParsedLabelSelector, Resource, ResourceList};
 
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
@@ -27,14 +25,31 @@ pub struct ListParams {
     pub continue_: Option<String>,
 }
 
+impl ListParams {
+    /// Parse the label selector if present
+    pub fn parse_label_selector(&self) -> Option<ParsedLabelSelector> {
+        self.label_selector.as_ref().and_then(|s| {
+            ParsedLabelSelector::parse(s).ok()
+        })
+    }
+
+    /// Parse the field selector if present
+    pub fn parse_field_selector(&self) -> Option<ParsedFieldSelector> {
+        self.field_selector.as_ref().and_then(|s| {
+            ParsedFieldSelector::parse(s).ok()
+        })
+    }
+}
+
 /// Generic list handler for namespaced resources
 pub async fn list_namespaced<R: Resource>(
     State(state): State<AppState>,
     Path(namespace): Path<String>,
-    Query(_params): Query<ListParams>,
+    Query(params): Query<ListParams>,
 ) -> ApiResult<Json<ResourceList<R>>> {
     let store = ResourceStore::<R>::new(state.storage.clone());
-    let resources = store.list(Some(&namespace)).await?;
+    let selector = params.parse_label_selector();
+    let resources = store.list_with_selector(Some(&namespace), selector.as_ref()).await?;
 
     let revision = state.storage.revision().await?;
     let list = ResourceList::new(resources).with_resource_version(&revision.to_string());
@@ -45,10 +60,11 @@ pub async fn list_namespaced<R: Resource>(
 /// Generic list handler for cluster-scoped resources
 pub async fn list_cluster<R: Resource>(
     State(state): State<AppState>,
-    Query(_params): Query<ListParams>,
+    Query(params): Query<ListParams>,
 ) -> ApiResult<Json<ResourceList<R>>> {
     let store = ResourceStore::<R>::new(state.storage.clone());
-    let resources = store.list(None).await?;
+    let selector = params.parse_label_selector();
+    let resources = store.list_with_selector(None, selector.as_ref()).await?;
 
     let revision = state.storage.revision().await?;
     let list = ResourceList::new(resources).with_resource_version(&revision.to_string());
@@ -59,10 +75,11 @@ pub async fn list_cluster<R: Resource>(
 /// Generic list across all namespaces
 pub async fn list_all_namespaces<R: Resource>(
     State(state): State<AppState>,
-    Query(_params): Query<ListParams>,
+    Query(params): Query<ListParams>,
 ) -> ApiResult<Json<ResourceList<R>>> {
     let store = ResourceStore::<R>::new(state.storage.clone());
-    let resources = store.list(None).await?;
+    let selector = params.parse_label_selector();
+    let resources = store.list_with_selector(None, selector.as_ref()).await?;
 
     let revision = state.storage.revision().await?;
     let list = ResourceList::new(resources).with_resource_version(&revision.to_string());

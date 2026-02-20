@@ -10,7 +10,29 @@ use serde_json::Value;
 use tracing::info;
 
 fn api_url() -> String {
-    std::env::var("K1S_API_SERVER").unwrap_or_else(|_| "http://127.0.0.1:6443".to_string())
+    // Try KUBECONFIG first, then K1S_API_SERVER, then default
+    if let Ok(kubeconfig_path) = std::env::var("KUBECONFIG") {
+        if let Ok(contents) = std::fs::read_to_string(&kubeconfig_path) {
+            // Parse kubeconfig YAML to get server URL
+            if let Ok(kc) = serde_yaml::from_str::<serde_yaml::Value>(&contents) {
+                if let Some(clusters) = kc.get("clusters").and_then(|c| c.as_sequence()) {
+                    if let Some(cluster) = clusters.first() {
+                        if let Some(server) = cluster.get("cluster").and_then(|c| c.get("server")).and_then(|s| s.as_str()) {
+                            return server.to_string();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    std::env::var("K1S_API_SERVER").unwrap_or_else(|_| "https://127.0.0.1:6443".to_string())
+}
+
+fn build_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap_or_default()
 }
 
 /// Simple URL encoding for query parameters
@@ -105,9 +127,9 @@ pub struct RunArgs {
     #[arg(short, long, default_value = "default")]
     pub namespace: String,
 
-    /// Command to run
-    #[arg(long)]
-    pub command: Option<String>,
+    /// Command to run (use -- to pass arguments)
+    #[arg(last = true)]
+    pub command: Vec<String>,
 
     /// Environment variables (KEY=VALUE)
     #[arg(long)]
@@ -198,21 +220,62 @@ pub struct ExecArgs {
     pub tty: bool,
 }
 
+/// Check if a resource is cluster-scoped (not namespaced)
+fn is_cluster_scoped(resource: &str) -> bool {
+    matches!(
+        resource.to_lowercase().as_str(),
+        "namespaces" | "namespace" | "ns"
+            | "nodes" | "node" | "no"
+            | "persistentvolumes" | "persistentvolume" | "pv"
+            | "clusterroles" | "clusterrole"
+            | "clusterrolebindings" | "clusterrolebinding"
+    )
+}
+
+/// Get API group and version for a resource
+fn resource_api_path(resource: &str) -> (&'static str, &'static str) {
+    let resource_lower = resource.to_lowercase();
+    match resource_lower.as_str() {
+        "deployments" | "deployment" | "deploy" => ("apis/apps/v1", "deployments"),
+        "replicasets" | "replicaset" | "rs" => ("apis/apps/v1", "replicasets"),
+        "daemonsets" | "daemonset" | "ds" => ("apis/apps/v1", "daemonsets"),
+        "statefulsets" | "statefulset" | "sts" => ("apis/apps/v1", "statefulsets"),
+        "pods" | "pod" | "po" => ("api/v1", "pods"),
+        "services" | "service" | "svc" => ("api/v1", "services"),
+        "configmaps" | "configmap" | "cm" => ("api/v1", "configmaps"),
+        "secrets" | "secret" => ("api/v1", "secrets"),
+        "namespaces" | "namespace" | "ns" => ("api/v1", "namespaces"),
+        "nodes" | "node" | "no" => ("api/v1", "nodes"),
+        "endpoints" | "ep" => ("api/v1", "endpoints"),
+        // For unknown resources, default to core v1 with the resource name as-is
+        _ => ("api/v1", "pods"), // Fallback, will likely 404 for unknown resources
+    }
+}
+
 pub async fn get_resources(args: GetArgs) -> Result<()> {
     let api_url = api_url();
-    let client = reqwest::Client::new();
+    let client = build_client();
 
-    let url = if args.all_namespaces {
-        format!("{}/api/v1/{}", api_url, args.resource)
+    let (api_path, resource_name) = resource_api_path(&args.resource);
+    let cluster_scoped = is_cluster_scoped(&args.resource);
+
+    let url = if cluster_scoped {
+        if let Some(name) = &args.name {
+            format!("{}/{}/{}/{}", api_url, api_path, resource_name, name)
+        } else {
+            format!("{}/{}/{}", api_url, api_path, resource_name)
+        }
+    } else if args.all_namespaces {
+        format!("{}/{}/{}", api_url, api_path, resource_name)
     } else if let Some(name) = &args.name {
         format!(
-            "{}/api/v1/namespaces/{}/{}/{}",
-            api_url, args.namespace, args.resource, name
+            "{}/{}/namespaces/{}/{}/{}",
+            api_url, api_path, args.namespace, resource_name, name
         )
     } else {
         format!(
-            "{}/api/v1/namespaces/{}/{}",
-            api_url, args.namespace, args.resource
+            "{}/{}/namespaces/{}/{}",
+            api_url, api_path, args.namespace, resource_name
         )
     };
 
@@ -321,6 +384,39 @@ fn print_resource_table(resource: &str, data: &Value) -> Result<()> {
                 );
             }
         }
+        "deployments" | "deployment" | "deploy" => {
+            println!(
+                "{:<30} {:<10} {:<10} {:<12} {:<10}",
+                "NAME", "READY", "UP-TO-DATE", "AVAILABLE", "AGE"
+            );
+            for item in items {
+                let name = item["metadata"]["name"].as_str().unwrap_or("-");
+                let replicas = item["spec"]["replicas"].as_i64().unwrap_or(0);
+                let ready = item["status"]["readyReplicas"].as_i64().unwrap_or(0);
+                let available = item["status"]["availableReplicas"].as_i64().unwrap_or(0);
+                let updated = item["status"]["updatedReplicas"].as_i64().unwrap_or(0);
+                println!(
+                    "{:<30} {}/{:<8} {:<10} {:<12} {:<10}",
+                    name, ready, replicas, updated, available, "-"
+                );
+            }
+        }
+        "replicasets" | "replicaset" | "rs" => {
+            println!(
+                "{:<40} {:<10} {:<10} {:<10} {:<10}",
+                "NAME", "DESIRED", "CURRENT", "READY", "AGE"
+            );
+            for item in items {
+                let name = item["metadata"]["name"].as_str().unwrap_or("-");
+                let desired = item["spec"]["replicas"].as_i64().unwrap_or(0);
+                let current = item["status"]["replicas"].as_i64().unwrap_or(0);
+                let ready = item["status"]["readyReplicas"].as_i64().unwrap_or(0);
+                println!(
+                    "{:<40} {:<10} {:<10} {:<10} {:<10}",
+                    name, desired, current, ready, "-"
+                );
+            }
+        }
         _ => {
             println!("{}", serde_json::to_string_pretty(data)?);
         }
@@ -343,7 +439,7 @@ pub async fn create_resource(args: CreateArgs) -> Result<()> {
                     "kind": "Namespace",
                     "metadata": { "name": name }
                 });
-                let client = reqwest::Client::new();
+                let client = build_client();
                 let url = format!("{}/api/v1/namespaces", api_url);
                 let response = client.post(&url).json(&ns).send().await?;
                 if response.status().is_success() {
@@ -405,7 +501,7 @@ async fn apply_manifest(api_url: &str, content: &str, default_namespace: &str) -
             }
         };
 
-        let client = reqwest::Client::new();
+        let client = build_client();
         let response = client.post(&url).json(&manifest).send().await?;
 
         if response.status().is_success() {
@@ -427,7 +523,7 @@ async fn apply_manifest(api_url: &str, content: &str, default_namespace: &str) -
 
 pub async fn delete_resource(args: DeleteArgs) -> Result<()> {
     let api_url = api_url();
-    let client = reqwest::Client::new();
+    let client = build_client();
 
     if let Some(filename) = args.filename {
         let content = std::fs::read_to_string(&filename)?;
@@ -536,9 +632,16 @@ pub async fn run_pod(args: RunArgs) -> Result<()> {
         })
         .unwrap_or_default();
 
+    let command = if args.command.is_empty() {
+        vec![]
+    } else {
+        args.command.clone()
+    };
+
     let container = Container {
         name: args.name.clone(),
         image: args.image.clone(),
+        command,
         env,
         ports,
         stdin: args.stdin,
@@ -560,7 +663,7 @@ pub async fn run_pod(args: RunArgs) -> Result<()> {
         ..Default::default()
     };
 
-    let client = reqwest::Client::new();
+    let client = build_client();
     let url = format!("{}/api/v1/namespaces/{}/pods", api_url, args.namespace);
     let response = client.post(&url).json(&pod).send().await?;
 
@@ -584,7 +687,7 @@ pub async fn describe_resource(args: DescribeArgs) -> Result<()> {
 
 pub async fn get_logs(args: LogsArgs) -> Result<()> {
     let api_url = api_url();
-    let client = reqwest::Client::new();
+    let client = build_client();
 
     // Build query parameters
     let mut query_params = vec![];
@@ -625,7 +728,7 @@ pub async fn get_logs(args: LogsArgs) -> Result<()> {
 
 pub async fn exec_command(args: ExecArgs) -> Result<()> {
     let api_url = api_url();
-    let client = reqwest::Client::new();
+    let client = build_client();
 
     if args.command.is_empty() {
         anyhow::bail!("No command specified. Use: k1s exec <pod> -- <command>");

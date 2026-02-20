@@ -10,6 +10,8 @@ pub mod secrets;
 use std::sync::Arc;
 use std::time::Duration;
 
+use ipnetwork::Ipv4Network;
+use k1s_networking::cni::BridgeConfig;
 use k1s_storage::backend::ResourceStore;
 use k1s_storage::SledBackend;
 use k1s_types::Pod;
@@ -81,11 +83,19 @@ impl Kubelet {
             _ => Arc::new(runtime::docker::DockerRuntime::new(&config.runtime).await?),
         };
 
-        let pod_manager = PodManager::new(runtime.clone(), storage.clone());
+        // Configure CNI from pod_cidr
+        let cni_config = Self::build_cni_config(&config.pod_cidr);
+        let pod_manager = PodManager::with_cni_config(runtime.clone(), storage.clone(), cni_config);
+
+        // Initialize CNI (creates Docker network on macOS, bridge on Linux)
+        if let Err(e) = pod_manager.init_cni().await {
+            error!("Failed to initialize CNI: {}", e);
+        }
 
         info!(
-            "Kubelet initialized with {} runtime",
-            runtime.name()
+            "Kubelet initialized with {} runtime, pod CIDR: {}",
+            runtime.name(),
+            config.pod_cidr
         );
 
         Ok(Self {
@@ -94,6 +104,27 @@ impl Kubelet {
             runtime,
             pod_manager,
         })
+    }
+
+    /// Build CNI configuration from pod CIDR
+    fn build_cni_config(pod_cidr: &str) -> BridgeConfig {
+        let subnet: Ipv4Network = pod_cidr.parse().unwrap_or_else(|_| {
+            "10.42.0.0/24".parse().unwrap()
+        });
+
+        // Gateway is typically the first usable IP in the subnet
+        let gateway = {
+            let network_addr = u32::from(subnet.ip());
+            std::net::Ipv4Addr::from(network_addr + 1)
+        };
+
+        BridgeConfig {
+            bridge_name: "k1s0".to_string(),
+            subnet,
+            gateway,
+            mtu: 1500,
+            masquerade: true,
+        }
     }
 
     /// Run the kubelet main loop

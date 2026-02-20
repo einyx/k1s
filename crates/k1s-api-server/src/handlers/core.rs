@@ -1,6 +1,7 @@
 //! Core v1 API handlers
 
 use axum::extract::{Path, Query, State};
+use axum::http::header::HeaderMap;
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
@@ -12,6 +13,7 @@ use k1s_types::{
 };
 
 use super::generic::ListParams;
+use super::patch::{patch_cluster, patch_namespaced};
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
 
@@ -81,6 +83,15 @@ pub async fn delete_namespace(
             name,
         })
     }
+}
+
+pub async fn patch_namespace(
+    state: State<AppState>,
+    path: Path<String>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> ApiResult<Json<Namespace>> {
+    patch_cluster::<Namespace>(state, path, headers, body).await
 }
 
 // Node handlers (cluster-scoped)
@@ -154,15 +165,25 @@ pub async fn delete_node(
     }
 }
 
+pub async fn patch_node(
+    state: State<AppState>,
+    path: Path<String>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> ApiResult<Json<Node>> {
+    patch_cluster::<Node>(state, path, headers, body).await
+}
+
 // Pod handlers (namespaced)
 
 pub async fn list_pods(
     State(state): State<AppState>,
     Path(namespace): Path<String>,
-    Query(_params): Query<ListParams>,
+    Query(params): Query<ListParams>,
 ) -> ApiResult<Json<ResourceList<Pod>>> {
     let store = ResourceStore::<Pod>::new(state.storage.clone());
-    let pods = store.list(Some(&namespace)).await?;
+    let selector = params.parse_label_selector();
+    let pods = store.list_with_selector(Some(&namespace), selector.as_ref()).await?;
     let revision = state.storage.revision().await?;
     Ok(Json(
         ResourceList::new(pods).with_resource_version(&revision.to_string()),
@@ -171,10 +192,11 @@ pub async fn list_pods(
 
 pub async fn list_all_pods(
     State(state): State<AppState>,
-    Query(_params): Query<ListParams>,
+    Query(params): Query<ListParams>,
 ) -> ApiResult<Json<ResourceList<Pod>>> {
     let store = ResourceStore::<Pod>::new(state.storage.clone());
-    let pods = store.list(None).await?;
+    let selector = params.parse_label_selector();
+    let pods = store.list_with_selector(None, selector.as_ref()).await?;
     let revision = state.storage.revision().await?;
     Ok(Json(
         ResourceList::new(pods).with_resource_version(&revision.to_string()),
@@ -241,6 +263,15 @@ pub async fn delete_pod(
     }
 }
 
+pub async fn patch_pod(
+    state: State<AppState>,
+    path: Path<(String, String)>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> ApiResult<Json<Pod>> {
+    patch_namespaced::<Pod>(state, path, headers, body).await
+}
+
 // Service handlers (namespaced)
 
 pub async fn list_services(
@@ -302,6 +333,15 @@ pub async fn delete_service(
             name,
         })
     }
+}
+
+pub async fn patch_service(
+    state: State<AppState>,
+    path: Path<(String, String)>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> ApiResult<Json<Service>> {
+    patch_namespaced::<Service>(state, path, headers, body).await
 }
 
 // ConfigMap handlers (namespaced)
@@ -379,6 +419,15 @@ pub async fn delete_configmap(
     }
 }
 
+pub async fn patch_configmap(
+    state: State<AppState>,
+    path: Path<(String, String)>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> ApiResult<Json<ConfigMap>> {
+    patch_namespaced::<ConfigMap>(state, path, headers, body).await
+}
+
 // Secret handlers (namespaced)
 
 pub async fn list_secrets(
@@ -452,6 +501,15 @@ pub async fn delete_secret(
             name,
         })
     }
+}
+
+pub async fn patch_secret(
+    state: State<AppState>,
+    path: Path<(String, String)>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> ApiResult<Json<Secret>> {
+    patch_namespaced::<Secret>(state, path, headers, body).await
 }
 
 // Endpoints handlers (namespaced)
@@ -539,4 +597,13 @@ pub async fn delete_endpoints(
             name,
         })
     }
+}
+
+pub async fn patch_endpoints(
+    state: State<AppState>,
+    path: Path<(String, String)>,
+    headers: HeaderMap,
+    body: axum::body::Bytes,
+) -> ApiResult<Json<Endpoints>> {
+    patch_namespaced::<Endpoints>(state, path, headers, body).await
 }

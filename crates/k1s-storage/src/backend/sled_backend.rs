@@ -248,12 +248,28 @@ impl<R: k1s_types::Resource> ResourceStore<R> {
     }
 
     pub async fn list(&self, namespace: Option<&str>) -> StorageResult<Vec<R>> {
+        self.list_with_selector(namespace, None).await
+    }
+
+    pub async fn list_with_selector(
+        &self,
+        namespace: Option<&str>,
+        selector: Option<&k1s_types::ParsedLabelSelector>,
+    ) -> StorageResult<Vec<R>> {
         let prefix = self.prefix(namespace);
         let items = self.backend.list(&prefix).await?;
 
         let mut resources = Vec::new();
         for (_, data) in items {
             let resource: R = serde_json::from_slice(&data)?;
+
+            // Apply label selector if provided
+            if let Some(sel) = selector {
+                if !sel.matches(&resource.metadata().labels) {
+                    continue;
+                }
+            }
+
             resources.push(resource);
         }
         Ok(resources)

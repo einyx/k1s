@@ -197,19 +197,54 @@ impl ContainerRuntime for DockerRuntime {
             }
         }
 
-        let host_config = if mounts.is_empty() {
-            None
-        } else {
-            Some(HostConfig {
-                mounts: Some(mounts),
-                ..Default::default()
-            })
+        // Build security context settings
+        // Merge pod-level and container-level security context (container takes precedence)
+        let pod_security = spec.security_context.as_ref();
+        let container_security = container_spec.security_context.as_ref();
+
+        // Determine user to run as (container-level overrides pod-level)
+        let run_as_user = container_security
+            .and_then(|s| s.run_as_user)
+            .or_else(|| pod_security.and_then(|s| s.run_as_user));
+        let run_as_group = container_security
+            .and_then(|s| s.run_as_group)
+            .or_else(|| pod_security.and_then(|s| s.run_as_group));
+
+        // Build user string (uid:gid format)
+        let user = match (run_as_user, run_as_group) {
+            (Some(uid), Some(gid)) => Some(format!("{}:{}", uid, gid)),
+            (Some(uid), None) => Some(uid.to_string()),
+            _ => None,
         };
+
+        // Security options
+        let privileged = container_security.and_then(|s| s.privileged);
+        let read_only_rootfs = container_security.and_then(|s| s.read_only_root_filesystem);
+
+        // Capabilities
+        let (cap_add, cap_drop) = if let Some(caps) = container_security.and_then(|s| s.capabilities.as_ref()) {
+            (
+                if caps.add.is_empty() { None } else { Some(caps.add.clone()) },
+                if caps.drop.is_empty() { None } else { Some(caps.drop.clone()) },
+            )
+        } else {
+            (None, None)
+        };
+
+        let host_config = Some(HostConfig {
+            mounts: if mounts.is_empty() { None } else { Some(mounts) },
+            privileged,
+            readonly_rootfs: read_only_rootfs,
+            cap_add,
+            cap_drop,
+            ..Default::default()
+        });
 
         let config = Config {
             image: Some(container_spec.image.clone()),
             env: Some(env),
             labels: Some(labels),
+            user,
             cmd: if container_spec.command.is_empty() {
                 None
             } else {

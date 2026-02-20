@@ -559,21 +559,73 @@ fn build_oci_spec(
         }));
     }
 
+    // Build security context settings
+    let pod_security = pod.spec.as_ref().and_then(|s| s.security_context.as_ref());
+    let container_security = container.security_context.as_ref();
+
+    // Determine user/group to run as (container-level overrides pod-level)
+    let uid = container_security
+        .and_then(|s| s.run_as_user)
+        .or_else(|| pod_security.and_then(|s| s.run_as_user))
+        .unwrap_or(0) as u32;
+    let gid = container_security
+        .and_then(|s| s.run_as_group)
+        .or_else(|| pod_security.and_then(|s| s.run_as_group))
+        .unwrap_or(0) as u32;
+
+    // Read-only root filesystem
+    let readonly_rootfs = container_security
+        .and_then(|s| s.read_only_root_filesystem)
+        .unwrap_or(false);
+
+    // Build capabilities
+    let mut capabilities = serde_json::json!({
+        "bounding": ["CAP_AUDIT_WRITE", "CAP_KILL", "CAP_NET_BIND_SERVICE"],
+        "effective": ["CAP_AUDIT_WRITE", "CAP_KILL", "CAP_NET_BIND_SERVICE"],
+        "inheritable": [],
+        "permitted": ["CAP_AUDIT_WRITE", "CAP_KILL", "CAP_NET_BIND_SERVICE"],
+        "ambient": []
+    });
+
+    if let Some(caps) = container_security.and_then(|s| s.capabilities.as_ref()) {
+        // Add capabilities
+        for cap in &caps.add {
+            let cap_name = if cap.starts_with("CAP_") { cap.clone() } else { format!("CAP_{}", cap) };
+            for field in ["bounding", "effective", "permitted"] {
+                if let Some(arr) = capabilities[field].as_array_mut() {
+                    if !arr.iter().any(|v| v.as_str() == Some(&cap_name)) {
+                        arr.push(serde_json::Value::String(cap_name.clone()));
+                    }
+                }
+            }
+        }
+        // Drop capabilities
+        for cap in &caps.drop {
+            let cap_name = if cap.starts_with("CAP_") { cap.clone() } else { format!("CAP_{}", cap) };
+            for field in ["bounding", "effective", "permitted", "ambient", "inheritable"] {
+                if let Some(arr) = capabilities[field].as_array_mut() {
+                    arr.retain(|v| v.as_str() != Some(&cap_name));
+                }
+            }
+        }
+    }
+
     let spec = serde_json::json!({
         "ociVersion": "1.0.2",
         "process": {
             "terminal": container.tty,
             "user": {
-                "uid": 0,
-                "gid": 0
+                "uid": uid,
+                "gid": gid
             },
             "args": if args.is_empty() { vec!["/bin/sh".to_string()] } else { args },
             "env": env,
             "cwd": container.working_dir.as_deref().unwrap_or("/"),
+            "capabilities": capabilities,
         },
         "root": {
             "path": "rootfs",
-            "readonly": false
+            "readonly": readonly_rootfs
         },
         "hostname": pod.spec.as_ref().and_then(|s| s.hostname.clone()).unwrap_or_else(|| pod.metadata.name.clone()),
         "mounts": mounts,

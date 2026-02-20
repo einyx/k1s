@@ -212,11 +212,14 @@ impl ComposeTranslator {
             },
             spec: Some(DeploymentSpec {
                 replicas: Some(replicas),
-                selector: LabelSelector { match_labels: {
-                    let mut sel = BTreeMap::new();
-                    sel.insert("app".to_string(), name.to_string());
-                    sel
-                }},
+                selector: LabelSelector {
+                    match_labels: {
+                        let mut sel = BTreeMap::new();
+                        sel.insert("app".to_string(), name.to_string());
+                        sel
+                    },
+                    match_expressions: Vec::new(),
+                },
                 template: PodTemplateSpec {
                     metadata: template_meta,
                     spec: Some(pod_spec),
@@ -274,16 +277,23 @@ impl ComposeTranslator {
                 ..Default::default()
             },
             spec: Some(DaemonSetSpec {
-                selector: LabelSelector { match_labels: {
-                    let mut sel = BTreeMap::new();
-                    sel.insert("app".to_string(), name.to_string());
-                    sel
-                }},
+                selector: LabelSelector {
+                    match_labels: {
+                        let mut sel = BTreeMap::new();
+                        sel.insert("app".to_string(), name.to_string());
+                        sel
+                    },
+                    match_expressions: Vec::new(),
+                },
                 template: PodTemplateSpec {
                     metadata: template_meta,
                     spec: Some(pod_spec),
                 },
+                min_ready_seconds: None,
+                revision_history_limit: None,
+                update_strategy: None,
             }),
+            status: None,
         }
     }
 

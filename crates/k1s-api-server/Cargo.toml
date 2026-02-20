@@ -5,6 +5,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
+repository.workspace = true
 
 [dependencies]
 k1s-types = { workspace = true }
@@ -32,3 +33,5 @@ async-trait = { workspace = true }
 hostname = "0.3"
 bollard = { workspace = true }
 base64 = { workspace = true }
+json-patch = { workspace = true }
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }

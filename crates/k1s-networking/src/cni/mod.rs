@@ -1,7 +1,11 @@
 //! CNI plugin support
 
+mod bridge;
+mod docker_bridge;
 mod executor;
 
+pub use bridge::{BridgeCni, BridgeConfig, Ipam};
+pub use docker_bridge::{DockerBridgeCni, DockerBridgeConfig};
 pub use executor::CniExecutor;
 
 use serde::{Deserialize, Serialize};

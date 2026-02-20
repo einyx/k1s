@@ -3,6 +3,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use axum::middleware;
 use axum_server::tls_rustls::RustlsConfig;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
@@ -10,9 +11,12 @@ use tracing::info;
 
 use k1s_storage::SledBackend;
 
+use crate::auth::auth_middleware;
+use crate::authz::{authz_middleware, create_default_rbac};
 use crate::routes::build_router;
 use crate::state::AppState;
 use crate::tls::{TlsCerts, TlsConfig};
+use crate::webhooks::{WebhookState, admission_webhook_middleware};
 
 /// API server configuration
 #[derive(Debug, Clone)]
@@ -88,16 +92,31 @@ impl ApiServer {
     pub async fn run(self) -> anyhow::Result<()> {
         let state = AppState::new(self.storage.clone(), self.config.node_name.clone());
 
+        // Create default RBAC resources
+        if let Err(e) = create_default_rbac(&state).await {
+            tracing::warn!("Failed to create default RBAC resources: {}", e);
+        }
+
         let cors = CorsLayer::new()
             .allow_origin(Any)
             .allow_methods(Any)
             .allow_headers(Any);
 
-        let app = build_router(state)
+        // Create webhook state
+        let webhook_state = WebhookState::new(self.storage.clone());
+
+        // Build router with authentication, authorization, and admission webhook middleware
+        // Middleware is applied in reverse order (last added runs first)
+        // Order: TraceLayer -> CORS -> Auth -> Authz -> Webhooks -> Handlers
+        let app = build_router(state.clone())
+            .layer(middleware::from_fn_with_state(webhook_state, admission_webhook_middleware))
+            .layer(middleware::from_fn_with_state(state.clone(), authz_middleware))
+            .layer(middleware::from_fn_with_state(state.clone(), auth_middleware))
             .layer(cors)
             .layer(TraceLayer::new_for_http());
 
         info!("Starting API server on {}", self.config.bind_address);
+        info!("Authentication, RBAC authorization, and admission webhooks enabled");
 
         if let Some(ref certs) = self.tls_certs {
             info!("TLS enabled");

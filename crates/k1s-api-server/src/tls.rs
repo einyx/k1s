@@ -4,7 +4,7 @@ use std::path::Path;
 
 use rcgen::{
     BasicConstraints, Certificate, CertificateParams, DistinguishedName, DnType, IsCa,
-    KeyPair, KeyUsagePurpose, SanType,
+    KeyUsagePurpose, SanType,
 };
 use tracing::info;
 
@@ -13,6 +13,8 @@ pub struct TlsCerts {
     pub ca_cert_pem: String,
     pub server_cert_pem: String,
     pub server_key_pem: String,
+    pub client_cert_pem: String,
+    pub client_key_pem: String,
 }
 
 pub struct TlsConfig {
@@ -41,7 +43,7 @@ impl TlsConfig {
 
 impl TlsCerts {
     pub fn generate(config: &TlsConfig) -> anyhow::Result<Self> {
-        let ca_key = KeyPair::generate()?;
+        // Generate CA certificate
         let mut ca_params = CertificateParams::default();
         ca_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
         ca_params.key_usages = vec![
@@ -52,9 +54,12 @@ impl TlsCerts {
         ca_dn.push(DnType::CommonName, "k1s-ca");
         ca_dn.push(DnType::OrganizationName, "k1s");
         ca_params.distinguished_name = ca_dn;
-        let ca_cert = ca_params.self_signed(&ca_key)?;
 
-        let server_key = KeyPair::generate()?;
+        let ca_cert = Certificate::from_params(ca_params)?;
+        let ca_cert_pem = ca_cert.serialize_pem()?;
+        let ca_key_pem = ca_cert.serialize_private_key_pem();
+
+        // Generate server certificate signed by CA
         let mut server_params = CertificateParams::default();
         server_params.is_ca = IsCa::NoCa;
         server_params.key_usages = vec![
@@ -67,7 +72,7 @@ impl TlsCerts {
 
         let mut san = Vec::new();
         for dns in &config.san_dns {
-            san.push(SanType::DnsName(dns.clone().try_into()?));
+            san.push(SanType::DnsName(dns.clone()));
         }
         for ip in &config.san_ips {
             san.push(SanType::IpAddress(*ip));
@@ -79,12 +84,36 @@ impl TlsCerts {
         server_dn.push(DnType::OrganizationName, "k1s");
         server_params.distinguished_name = server_dn;
 
-        let server_cert = server_params.signed_by(&server_key, &ca_cert, &ca_key)?;
+        let server_cert = Certificate::from_params(server_params)?;
+        let server_cert_pem = server_cert.serialize_pem_with_signer(&ca_cert)?;
+        let server_key_pem = server_cert.serialize_private_key_pem();
+
+        // Generate client certificate signed by CA (for admin kubeconfig)
+        let mut client_params = CertificateParams::default();
+        client_params.is_ca = IsCa::NoCa;
+        client_params.key_usages = vec![
+            KeyUsagePurpose::DigitalSignature,
+            KeyUsagePurpose::KeyEncipherment,
+        ];
+        client_params.extended_key_usages = vec![
+            rcgen::ExtendedKeyUsagePurpose::ClientAuth,
+        ];
+
+        let mut client_dn = DistinguishedName::new();
+        client_dn.push(DnType::CommonName, "k1s-admin");
+        client_dn.push(DnType::OrganizationName, "system:masters");
+        client_params.distinguished_name = client_dn;
+
+        let client_cert = Certificate::from_params(client_params)?;
+        let client_cert_pem = client_cert.serialize_pem_with_signer(&ca_cert)?;
+        let client_key_pem = client_cert.serialize_private_key_pem();
 
         Ok(Self {
-            ca_cert_pem: ca_cert.pem(),
-            server_cert_pem: server_cert.pem(),
-            server_key_pem: server_key.serialize_pem(),
+            ca_cert_pem,
+            server_cert_pem,
+            server_key_pem,
+            client_cert_pem,
+            client_key_pem,
         })
     }
 
@@ -92,16 +121,24 @@ impl TlsCerts {
         let ca_path = config.cert_dir.join("ca.crt");
         let cert_path = config.cert_dir.join("server.crt");
         let key_path = config.cert_dir.join("server.key");
+        let client_cert_path = config.cert_dir.join("client.crt");
+        let client_key_path = config.cert_dir.join("client.key");
 
-        if ca_path.exists() && cert_path.exists() && key_path.exists() {
+        if ca_path.exists() && cert_path.exists() && key_path.exists()
+            && client_cert_path.exists() && client_key_path.exists()
+        {
             info!("Loading existing TLS certificates from {:?}", config.cert_dir);
             let ca_cert_pem = std::fs::read_to_string(&ca_path)?;
             let server_cert_pem = std::fs::read_to_string(&cert_path)?;
             let server_key_pem = std::fs::read_to_string(&key_path)?;
+            let client_cert_pem = std::fs::read_to_string(&client_cert_path)?;
+            let client_key_pem = std::fs::read_to_string(&client_key_path)?;
             return Ok(Self {
                 ca_cert_pem,
                 server_cert_pem,
                 server_key_pem,
+                client_cert_pem,
+                client_key_pem,
             });
         }
 
@@ -112,11 +149,14 @@ impl TlsCerts {
         std::fs::write(&ca_path, &certs.ca_cert_pem)?;
         std::fs::write(&cert_path, &certs.server_cert_pem)?;
         std::fs::write(&key_path, &certs.server_key_pem)?;
+        std::fs::write(&client_cert_path, &certs.client_cert_pem)?;
+        std::fs::write(&client_key_path, &certs.client_key_pem)?;
 
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
             std::fs::set_permissions(&key_path, std::fs::Permissions::from_mode(0o600))?;
+            std::fs::set_permissions(&client_key_path, std::fs::Permissions::from_mode(0o600))?;
         }
 
         Ok(certs)
@@ -126,6 +166,8 @@ impl TlsCerts {
         use base64::{Engine, engine::general_purpose::STANDARD};
 
         let ca_data = STANDARD.encode(&self.ca_cert_pem);
+        let client_cert_data = STANDARD.encode(&self.client_cert_pem);
+        let client_key_data = STANDARD.encode(&self.client_key_pem);
 
         format!(
             r#"apiVersion: v1
@@ -144,11 +186,13 @@ current-context: k1s
 users:
 - name: k1s-admin
   user:
-    client-certificate-data: {ca_data}
-    client-key-data: {ca_data}
+    client-certificate-data: {client_cert_data}
+    client-key-data: {client_key_data}
 "#,
             ca_data = ca_data,
             server_url = server_url,
+            client_cert_data = client_cert_data,
+            client_key_data = client_key_data,
         )
     }
 }
