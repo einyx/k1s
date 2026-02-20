@@ -69,16 +69,29 @@ pub async fn openapi_v2() -> impl IntoResponse {
 
 /// Generate OpenAPI v3 schema
 pub async fn openapi_v3() -> impl IntoResponse {
-    let schema = json!({
-        "openapi": "3.0.0",
-        "info": {
-            "title": "k1s API",
-            "version": "v1"
-        },
-        "paths": {}
+    // OpenAPI v3 discovery document listing available group-versions
+    // This tells kubectl where to find the actual schemas for each API group
+    let discovery = json!({
+        "paths": {
+            "api/v1": {
+                "serverRelativeURL": "/openapi/v3/api/v1?hash=placeholder"
+            },
+            "apis/apps/v1": {
+                "serverRelativeURL": "/openapi/v3/apis/apps/v1?hash=placeholder"
+            },
+            "apis/batch/v1": {
+                "serverRelativeURL": "/openapi/v3/apis/batch/v1?hash=placeholder"
+            },
+            "apis/rbac.authorization.k8s.io/v1": {
+                "serverRelativeURL": "/openapi/v3/apis/rbac.authorization.k8s.io/v1?hash=placeholder"
+            },
+            "apis/storage.k8s.io/v1": {
+                "serverRelativeURL": "/openapi/v3/apis/storage.k8s.io/v1?hash=placeholder"
+            }
+        }
     });
 
-    Json(schema)
+    Json(discovery)
 }
 
 fn object_meta_schema() -> Value {
