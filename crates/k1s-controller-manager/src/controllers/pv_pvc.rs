@@ -79,14 +79,14 @@ impl PvPvcController {
         // Parse quantities like "10Gi", "100Mi", etc.
         fn parse_quantity(s: &str) -> Option<u64> {
             let s = s.trim();
-            if s.ends_with("Ti") {
-                s[..s.len() - 2].parse::<u64>().ok().map(|n| n * 1024 * 1024 * 1024 * 1024)
-            } else if s.ends_with("Gi") {
-                s[..s.len() - 2].parse::<u64>().ok().map(|n| n * 1024 * 1024 * 1024)
-            } else if s.ends_with("Mi") {
-                s[..s.len() - 2].parse::<u64>().ok().map(|n| n * 1024 * 1024)
-            } else if s.ends_with("Ki") {
-                s[..s.len() - 2].parse::<u64>().ok().map(|n| n * 1024)
+            if let Some(n) = s.strip_suffix("Ti") {
+                n.parse::<u64>().ok().map(|n| n * 1024 * 1024 * 1024 * 1024)
+            } else if let Some(n) = s.strip_suffix("Gi") {
+                n.parse::<u64>().ok().map(|n| n * 1024 * 1024 * 1024)
+            } else if let Some(n) = s.strip_suffix("Mi") {
+                n.parse::<u64>().ok().map(|n| n * 1024 * 1024)
+            } else if let Some(n) = s.strip_suffix("Ki") {
+                n.parse::<u64>().ok().map(|n| n * 1024)
             } else {
                 s.parse::<u64>().ok()
             }

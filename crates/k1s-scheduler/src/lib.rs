@@ -22,36 +22,36 @@ fn parse_resource_quantity(value: &str) -> i64 {
     let value = value.trim();
 
     // Handle CPU millicores (e.g., "100m")
-    if value.ends_with('m') {
-        return value[..value.len()-1].parse::<i64>().unwrap_or(0);
+    if let Some(s) = value.strip_suffix('m') {
+        return s.parse::<i64>().unwrap_or(0);
     }
 
     // Handle memory with binary suffixes
-    if value.ends_with("Ki") {
-        return value[..value.len()-2].parse::<i64>().unwrap_or(0) * 1024;
+    if let Some(s) = value.strip_suffix("Ki") {
+        return s.parse::<i64>().unwrap_or(0) * 1024;
     }
-    if value.ends_with("Mi") {
-        return value[..value.len()-2].parse::<i64>().unwrap_or(0) * 1024 * 1024;
+    if let Some(s) = value.strip_suffix("Mi") {
+        return s.parse::<i64>().unwrap_or(0) * 1024 * 1024;
     }
-    if value.ends_with("Gi") {
-        return value[..value.len()-2].parse::<i64>().unwrap_or(0) * 1024 * 1024 * 1024;
+    if let Some(s) = value.strip_suffix("Gi") {
+        return s.parse::<i64>().unwrap_or(0) * 1024 * 1024 * 1024;
     }
-    if value.ends_with("Ti") {
-        return value[..value.len()-2].parse::<i64>().unwrap_or(0) * 1024 * 1024 * 1024 * 1024;
+    if let Some(s) = value.strip_suffix("Ti") {
+        return s.parse::<i64>().unwrap_or(0) * 1024 * 1024 * 1024 * 1024;
     }
 
     // Handle memory with decimal suffixes
-    if value.ends_with('K') || value.ends_with('k') {
-        return value[..value.len()-1].parse::<i64>().unwrap_or(0) * 1000;
+    if let Some(s) = value.strip_suffix('K').or_else(|| value.strip_suffix('k')) {
+        return s.parse::<i64>().unwrap_or(0) * 1000;
     }
-    if value.ends_with('M') {
-        return value[..value.len()-1].parse::<i64>().unwrap_or(0) * 1000 * 1000;
+    if let Some(s) = value.strip_suffix('M') {
+        return s.parse::<i64>().unwrap_or(0) * 1000 * 1000;
     }
-    if value.ends_with('G') {
-        return value[..value.len()-1].parse::<i64>().unwrap_or(0) * 1000 * 1000 * 1000;
+    if let Some(s) = value.strip_suffix('G') {
+        return s.parse::<i64>().unwrap_or(0) * 1000 * 1000 * 1000;
     }
-    if value.ends_with('T') {
-        return value[..value.len()-1].parse::<i64>().unwrap_or(0) * 1000 * 1000 * 1000 * 1000;
+    if let Some(s) = value.strip_suffix('T') {
+        return s.parse::<i64>().unwrap_or(0) * 1000 * 1000 * 1000 * 1000;
     }
 
     // Plain number - for CPU, convert to millicores
