@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use sled::{Db, IVec, Tree};
 use tokio::sync::RwLock;
 
+use crate::encryption::SecretEncryption;
 use crate::error::{StorageError, StorageResult};
 use crate::watch::{WatchBroadcaster, WatchEvent, Watcher};
 use crate::Storage;
@@ -25,6 +26,7 @@ pub struct SledBackend {
     current_revision: AtomicI64,
     watcher: WatchBroadcaster,
     _lock: Arc<RwLock<()>>,
+    encryption: Option<Arc<SecretEncryption>>,
 }
 
 impl SledBackend {
@@ -60,7 +62,59 @@ impl SledBackend {
             current_revision: AtomicI64::new(current_revision),
             watcher: WatchBroadcaster::default(),
             _lock: Arc::new(RwLock::new(())),
+            encryption: None,
         })
+    }
+
+    /// Enable encryption for secrets
+    pub fn with_encryption(mut self, encryption: SecretEncryption) -> Self {
+        self.encryption = Some(Arc::new(encryption));
+        self
+    }
+
+    /// Check if a key is for a secret resource
+    fn is_secret_key(key: &str) -> bool {
+        key.contains("/v1/secrets/") || key.contains("/v1, Resource=secrets")
+    }
+
+    /// Encrypt data if it's a secret
+    fn maybe_encrypt(&self, key: &str, data: &[u8]) -> StorageResult<Vec<u8>> {
+        if Self::is_secret_key(key) {
+            if let Some(enc) = &self.encryption {
+                let encrypted = enc.encrypt(data)
+                    .map_err(|e| StorageError::Internal(e.to_string()))?;
+                Ok(encrypted.into_bytes())
+            } else {
+                // No encryption configured, store as-is
+                Ok(data.to_vec())
+            }
+        } else {
+            Ok(data.to_vec())
+        }
+    }
+
+    /// Decrypt data if it's a secret
+    fn maybe_decrypt(&self, key: &str, data: &[u8]) -> StorageResult<Vec<u8>> {
+        if Self::is_secret_key(key) {
+            if let Some(enc) = &self.encryption {
+                // Try to decrypt - if it fails, data might not be encrypted yet
+                let data_str = std::str::from_utf8(data)
+                    .map_err(|e| StorageError::Internal(format!("Invalid UTF-8: {}", e)))?;
+
+                match enc.decrypt(data_str) {
+                    Ok(decrypted) => Ok(decrypted),
+                    Err(_) => {
+                        // Data not encrypted, return as-is (for backwards compatibility)
+                        Ok(data.to_vec())
+                    }
+                }
+            } else {
+                // No encryption configured
+                Ok(data.to_vec())
+            }
+        } else {
+            Ok(data.to_vec())
+        }
     }
 
     /// Increment and return the new revision
@@ -114,20 +168,29 @@ impl SledBackend {
 #[async_trait]
 impl Storage for SledBackend {
     async fn get(&self, key: &str) -> StorageResult<Option<Vec<u8>>> {
-        Ok(self.data.get(key.as_bytes())?.map(|v| v.to_vec()))
+        match self.data.get(key.as_bytes())? {
+            Some(v) => {
+                let decrypted = self.maybe_decrypt(key, &v)?;
+                Ok(Some(decrypted))
+            }
+            None => Ok(None),
+        }
     }
 
     async fn put(&self, key: &str, value: Vec<u8>) -> StorageResult<i64> {
         let revision = self.next_revision()?;
 
+        // Encrypt if needed
+        let encrypted_value = self.maybe_encrypt(key, &value)?;
+
         // Get previous value for watch event
         let prev_value = self.data.get(key.as_bytes())?;
 
-        // Store in data tree
-        self.data.insert(key.as_bytes(), value.as_slice())?;
+        // Store in data tree (encrypted if secret)
+        self.data.insert(key.as_bytes(), encrypted_value.as_slice())?;
 
-        // Store in history
-        self.store_history(key, &value, revision)?;
+        // Store in history (encrypted if secret)
+        self.store_history(key, &encrypted_value, revision)?;
 
         // Store the revision for this key
         let rev_key = format!("rev:{}", key);

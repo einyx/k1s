@@ -191,6 +191,13 @@ pub async fn list_nodes(
 }
 
 // Service handlers
+pub async fn list_all_services(
+    state: State<AppState>,
+    query: Query<ListParams>,
+) -> ApiResult<Response> {
+    list_or_watch_all::<Service>(state, query).await
+}
+
 pub async fn list_services(
     state: State<AppState>,
     path: Path<String>,
@@ -200,6 +207,13 @@ pub async fn list_services(
 }
 
 // ConfigMap handlers
+pub async fn list_all_configmaps(
+    state: State<AppState>,
+    query: Query<ListParams>,
+) -> ApiResult<Response> {
+    list_or_watch_all::<ConfigMap>(state, query).await
+}
+
 pub async fn list_configmaps(
     state: State<AppState>,
     path: Path<String>,
@@ -209,6 +223,13 @@ pub async fn list_configmaps(
 }
 
 // Secret handlers
+pub async fn list_all_secrets(
+    state: State<AppState>,
+    query: Query<ListParams>,
+) -> ApiResult<Response> {
+    list_or_watch_all::<Secret>(state, query).await
+}
+
 pub async fn list_secrets(
     state: State<AppState>,
     path: Path<String>,

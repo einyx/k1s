@@ -13,6 +13,7 @@ pub mod pod_subresources;
 pub mod rbac;
 pub mod scale;
 pub mod storage;
+pub mod vault;
 pub mod watch;
 
 pub use health::{healthz, livez, readyz};

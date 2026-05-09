@@ -5,6 +5,7 @@ members = [
     "crates/k1s-client",
     "crates/k1s-utils",
     "crates/k1s-storage",
+    "crates/k1s-vault",
     "crates/k1s-api-server",
     "crates/k1s-scheduler",
     "crates/k1s-controller-manager",
@@ -91,6 +92,7 @@ k1s-types = { version = "0.1.0", path = "crates/k1s-types" }
 k1s-client = { version = "0.1.0", path = "crates/k1s-client" }
 k1s-utils = { version = "0.1.0", path = "crates/k1s-utils" }
 k1s-storage = { version = "0.1.0", path = "crates/k1s-storage" }
+k1s-vault = { version = "0.1.0", path = "crates/k1s-vault" }
 k1s-api-server = { version = "0.1.0", path = "crates/k1s-api-server" }
 k1s-scheduler = { version = "0.1.0", path = "crates/k1s-scheduler" }
 k1s-controller-manager = { version = "0.1.0", path = "crates/k1s-controller-manager" }

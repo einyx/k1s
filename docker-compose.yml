@@ -1,0 +1,55 @@
+version: "3.8"
+
+services:
+  k1s-server:
+    build: .
+    container_name: k1s-server
+    privileged: true
+    command: ["server", "--bind-address=0.0.0.0:6443", "--p2p", "--p2p-address=0.0.0.0:4001"]
+    ports:
+      - "6443:6443"
+      - "4001:4001"
+    volumes:
+      - k1s-data:/var/lib/k1s
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - K1S_NODE_NAME=k1s-server
+      - K1S_CONTAINER_RUNTIME=docker
+      - RUST_LOG=info
+    networks:
+      - k1s-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:6443/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  k1s-agent:
+    build: .
+    container_name: k1s-agent
+    privileged: true
+    command: ["agent", "--server=http://k1s-server:6443", "--token=dummy", "--p2p", "--p2p-address=0.0.0.0:4001"]
+    depends_on:
+      k1s-server:
+        condition: service_healthy
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - K1S_NODE_NAME=k1s-agent
+      - K1S_CONTAINER_RUNTIME=docker
+      - K1S_P2P_PEERS=/ip4/k1s-server/tcp/4001
+      - RUST_LOG=info
+    networks:
+      - k1s-network
+    deploy:
+      replicas: 0  # Set to 1+ for multi-node
+
+volumes:
+  k1s-data:
+
+networks:
+  k1s-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

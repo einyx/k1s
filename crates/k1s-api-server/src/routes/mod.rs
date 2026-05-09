@@ -3,7 +3,7 @@
 use axum::routing::{delete, get, patch, post, put};
 use axum::Router;
 
-use crate::handlers::{apps, batch, core, events, healthz, list_watch, livez, openapi, pod_subresources, rbac, readyz, scale, storage};
+use crate::handlers::{apps, batch, core, events, healthz, list_watch, livez, openapi, pod_subresources, rbac, readyz, scale, storage, vault};
 use crate::state::AppState;
 
 /// Build the complete API router
@@ -34,6 +34,8 @@ pub fn build_router(state: AppState) -> Router {
         .nest("/apis/rbac.authorization.k8s.io/v1", rbac_v1_routes())
         // Storage v1 API
         .nest("/apis/storage.k8s.io/v1", storage_v1_routes())
+        // Vault API
+        .nest("/v1/vault", vault_routes())
         .with_state(state)
 }
 
@@ -383,6 +385,12 @@ fn core_v1_routes() -> Router<AppState> {
         .route("/nodes/:name", delete(core::delete_node))
         // Pods (all namespaces) - with watch support
         .route("/pods", get(list_watch::list_all_pods))
+        // Services (all namespaces) - with watch support
+        .route("/services", get(list_watch::list_all_services))
+        // ConfigMaps (all namespaces) - with watch support
+        .route("/configmaps", get(list_watch::list_all_configmaps))
+        // Secrets (all namespaces) - with watch support
+        .route("/secrets", get(list_watch::list_all_secrets))
         // Endpoints (all namespaces) - with watch support
         .route("/endpoints", get(list_watch::list_all_endpoints))
         // Pods (namespaced) - with watch support
@@ -848,4 +856,27 @@ fn storage_v1_routes() -> Router<AppState> {
         .route("/storageclasses/:name", put(storage::update_storageclass))
         .route("/storageclasses/:name", patch(storage::patch_storageclass))
         .route("/storageclasses/:name", delete(storage::delete_storageclass))
+}
+
+/// Vault API routes
+fn vault_routes() -> Router<AppState> {
+    Router::new()
+        // Transit Engine - Encryption as a Service
+        .route("/transit/keys", get(vault::transit_list_keys))
+        .route("/transit/keys/:key_name", post(vault::transit_create_key))
+        .route("/transit/keys/:key_name", delete(vault::transit_delete_key))
+        .route("/transit/encrypt/:key_name", post(vault::transit_encrypt))
+        .route("/transit/decrypt/:key_name", post(vault::transit_decrypt))
+        // KV Engine - Versioned secret storage
+        .route("/kv/data/*path", get(vault::kv_read))
+        .route("/kv/data/*path", post(vault::kv_write))
+        .route("/kv/data/*path", delete(vault::kv_delete))
+        .route("/kv/metadata/*path", get(vault::kv_list))
+        // PKI Engine - Certificate management
+        .route("/pki/root/:ca_name", post(vault::pki_generate_root))
+        .route("/pki/issue/:ca_name", post(vault::pki_issue_certificate))
+        .route("/pki/revoke/:ca_name", post(vault::pki_revoke_certificate))
+        .route("/pki/certs/:ca_name", get(vault::pki_list_certificates))
+        // Audit - Query audit logs
+        .route("/audit/logs", get(vault::audit_query))
 }

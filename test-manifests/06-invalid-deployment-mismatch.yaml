@@ -1,0 +1,18 @@
+# Invalid deployment - selector doesn't match labels
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-mismatch
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: redis  # Mismatch!
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.21

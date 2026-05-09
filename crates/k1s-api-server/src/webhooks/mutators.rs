@@ -1,7 +1,7 @@
 //! Built-in mutation webhooks
 
 use k1s_types::api::admission::v1::{AdmissionRequest, AdmissionResponse};
-use k1s_types::{Pod, Deployment};
+use k1s_types::{Pod, Deployment, DaemonSet, StatefulSet, ReplicaSet, CronJob};
 use serde_json::{json, Value};
 use tracing::debug;
 
@@ -15,6 +15,21 @@ pub fn mutate_pod(request: &AdmissionRequest) -> AdmissionResponse {
     let mut patches = Vec::new();
     let mut modified = false;
 
+    // Ensure labels object exists
+    let labels_exist = !pod.metadata.labels.is_empty();
+    if !labels_exist && request.object.as_ref()
+        .and_then(|o| o.get("metadata"))
+        .and_then(|m| m.get("labels"))
+        .is_none()
+    {
+        patches.push(json!({
+            "op": "add",
+            "path": "/metadata/labels",
+            "value": {}
+        }));
+        modified = true;
+    }
+
     // Add default labels if not present
     if !pod.metadata.labels.contains_key("app") {
         if let Some(name) = extract_app_name(&pod.metadata.name) {
@@ -26,6 +41,21 @@ pub fn mutate_pod(request: &AdmissionRequest) -> AdmissionResponse {
             }));
             modified = true;
         }
+    }
+
+    // Ensure annotations object exists
+    let annotations_exist = !pod.metadata.annotations.is_empty();
+    if !annotations_exist && request.object.as_ref()
+        .and_then(|o| o.get("metadata"))
+        .and_then(|m| m.get("annotations"))
+        .is_none()
+    {
+        patches.push(json!({
+            "op": "add",
+            "path": "/metadata/annotations",
+            "value": {}
+        }));
+        modified = true;
     }
 
     // Add default annotations
@@ -45,6 +75,24 @@ pub fn mutate_pod(request: &AdmissionRequest) -> AdmissionResponse {
     // Add resource limits for containers without them
     if let Some(spec) = &mut pod.spec {
         for (idx, container) in spec.containers.iter_mut().enumerate() {
+            // Check if resources field exists in original request
+            let resources_exist = request.object.as_ref()
+                .and_then(|o| o.get("spec"))
+                .and_then(|s| s.get("containers"))
+                .and_then(|c| c.get(idx))
+                .and_then(|cont| cont.get("resources"))
+                .is_some();
+
+            if !resources_exist {
+                // Create resources object first
+                patches.push(json!({
+                    "op": "add",
+                    "path": format!("/spec/containers/{}/resources", idx),
+                    "value": {}
+                }));
+                modified = true;
+            }
+
             // Get or create resources
             let resources = container.resources.get_or_insert_with(Default::default);
 
@@ -174,10 +222,185 @@ pub fn mutate_deployment(request: &AdmissionRequest) -> AdmissionResponse {
 }
 
 /// Route mutation request to appropriate mutator based on resource kind
+/// Mutates DaemonSet resources with defaults
+pub fn mutate_daemonset(request: &AdmissionRequest) -> AdmissionResponse {
+    let mut daemonset: DaemonSet = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
+        Some(d) => d,
+        None => return AdmissionResponse::allow(request.uid.clone()),
+    };
+
+    let mut patches = Vec::new();
+    let mut modified = false;
+
+    // Ensure annotations object exists
+    let annotations_exist = !daemonset.metadata.annotations.is_empty();
+    if !annotations_exist && request.object.as_ref()
+        .and_then(|o| o.get("metadata"))
+        .and_then(|m| m.get("annotations"))
+        .is_none()
+    {
+        patches.push(json!({
+            "op": "add",
+            "path": "/metadata/annotations",
+            "value": {}
+        }));
+        modified = true;
+    }
+
+    // Add management annotations
+    if daemonset.metadata.annotations.get("k1s.io/managed-by").is_none() {
+        daemonset.metadata.annotations.insert(
+            "k1s.io/managed-by".to_string(),
+            "k1s".to_string(),
+        );
+        patches.push(json!({
+            "op": "add",
+            "path": "/metadata/annotations/k1s.io~1managed-by",
+            "value": "k1s"
+        }));
+        modified = true;
+    }
+
+    // Set default update strategy if not specified
+    if let Some(spec) = &mut daemonset.spec {
+        if spec.update_strategy.is_none() {
+            patches.push(json!({
+                "op": "add",
+                "path": "/spec/updateStrategy",
+                "value": {
+                    "type": "RollingUpdate",
+                    "rollingUpdate": {
+                        "maxUnavailable": 1
+                    }
+                }
+            }));
+            modified = true;
+        }
+    }
+
+    if modified {
+        let patch_json = serde_json::to_string(&patches).unwrap();
+        let patch_base64 = base64::encode(&patch_json);
+        debug!("Mutated daemonset {} with {} patches", daemonset.metadata.name, patches.len());
+        AdmissionResponse::mutate(request.uid.clone(), patch_base64)
+    } else {
+        AdmissionResponse::allow(request.uid.clone())
+    }
+}
+
+/// Mutates StatefulSet resources with defaults
+pub fn mutate_statefulset(request: &AdmissionRequest) -> AdmissionResponse {
+    let mut statefulset: StatefulSet = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
+        Some(s) => s,
+        None => return AdmissionResponse::allow(request.uid.clone()),
+    };
+
+    let mut patches = Vec::new();
+    let mut modified = false;
+
+    // Ensure annotations exist
+    if !statefulset.metadata.annotations.is_empty() || request.object.as_ref()
+        .and_then(|o| o.get("metadata"))
+        .and_then(|m| m.get("annotations"))
+        .is_none()
+    {
+        if statefulset.metadata.annotations.is_empty() {
+            patches.push(json!({"op": "add", "path": "/metadata/annotations", "value": {}}));
+            modified = true;
+        }
+    }
+
+    if statefulset.metadata.annotations.get("k1s.io/managed-by").is_none() {
+        patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
+        modified = true;
+    }
+
+    if modified {
+        let patch_json = serde_json::to_string(&patches).unwrap();
+        AdmissionResponse::mutate(request.uid.clone(), base64::encode(&patch_json))
+    } else {
+        AdmissionResponse::allow(request.uid.clone())
+    }
+}
+
+/// Mutates ReplicaSet resources with defaults
+pub fn mutate_replicaset(request: &AdmissionRequest) -> AdmissionResponse {
+    let mut replicaset: ReplicaSet = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
+        Some(r) => r,
+        None => return AdmissionResponse::allow(request.uid.clone()),
+    };
+
+    let mut patches = Vec::new();
+    let mut modified = false;
+
+    // Ensure annotations exist
+    if !replicaset.metadata.annotations.is_empty() || request.object.as_ref()
+        .and_then(|o| o.get("metadata"))
+        .and_then(|m| m.get("annotations"))
+        .is_none()
+    {
+        if replicaset.metadata.annotations.is_empty() {
+            patches.push(json!({"op": "add", "path": "/metadata/annotations", "value": {}}));
+            modified = true;
+        }
+    }
+
+    if replicaset.metadata.annotations.get("k1s.io/managed-by").is_none() {
+        patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
+        modified = true;
+    }
+
+    if modified {
+        let patch_json = serde_json::to_string(&patches).unwrap();
+        AdmissionResponse::mutate(request.uid.clone(), base64::encode(&patch_json))
+    } else {
+        AdmissionResponse::allow(request.uid.clone())
+    }
+}
+
+/// Mutates CronJob resources with defaults
+pub fn mutate_cronjob(request: &AdmissionRequest) -> AdmissionResponse {
+    let mut cronjob: CronJob = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
+        Some(c) => c,
+        None => return AdmissionResponse::allow(request.uid.clone()),
+    };
+
+    let mut patches = Vec::new();
+    let mut modified = false;
+
+    // Ensure annotations exist
+    if !cronjob.metadata.annotations.is_empty() || request.object.as_ref()
+        .and_then(|o| o.get("metadata"))
+        .and_then(|m| m.get("annotations"))
+        .is_none()
+    {
+        if cronjob.metadata.annotations.is_empty() {
+            patches.push(json!({"op": "add", "path": "/metadata/annotations", "value": {}}));
+            modified = true;
+        }
+    }
+
+    if cronjob.metadata.annotations.get("k1s.io/managed-by").is_none() {
+        patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
+        modified = true;
+    }
+
+    if modified {
+        let patch_json = serde_json::to_string(&patches).unwrap();
+        AdmissionResponse::mutate(request.uid.clone(), base64::encode(&patch_json))
+    } else {
+        AdmissionResponse::allow(request.uid.clone())
+    }
+}
+
 pub fn mutate_resource(request: &AdmissionRequest) -> AdmissionResponse {
     match request.kind.kind.as_str() {
         "Pod" => mutate_pod(request),
         "Deployment" => mutate_deployment(request),
+        "DaemonSet" => mutate_daemonset(request),
+        "StatefulSet" => mutate_statefulset(request),
+        "ReplicaSet" => mutate_replicaset(request),
+        "CronJob" => mutate_cronjob(request),
         _ => {
             // Unknown resource type, allow without mutation
             debug!("No built-in mutator for kind: {}", request.kind.kind);

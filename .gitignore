@@ -1,0 +1,5 @@
+target/
+.k1s/
+.k1s-test/
+k1s/storage/
+k1s/pki/

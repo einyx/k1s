@@ -10,6 +10,7 @@ repository.workspace = true
 [dependencies]
 k1s-types = { workspace = true }
 k1s-storage = { workspace = true }
+k1s-vault = { workspace = true }
 k1s-utils = { workspace = true }
 axum = { workspace = true }
 axum-server = { workspace = true }

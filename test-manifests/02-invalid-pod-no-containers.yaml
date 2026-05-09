@@ -1,0 +1,8 @@
+# Invalid pod - should be rejected (no containers)
+apiVersion: v1
+kind: Pod
+metadata:
+  name: invalid-no-containers
+  namespace: default
+spec:
+  containers: []

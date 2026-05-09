@@ -18,6 +18,8 @@ use k1s_types::api::admission::v1::{
 use serde_json::Value;
 use tracing::{debug, error};
 use uuid::Uuid;
+use base64;
+use json_patch;
 
 use super::invoker::WebhookInvoker;
 use super::{validate_resource, mutate_resource};
@@ -64,7 +66,7 @@ pub async fn admission_webhook_middleware(
     let uri = request.uri().clone();
     let path = uri.path();
 
-    tracing::info!("🔍 Webhook middleware called: {} {}", method, path);
+    tracing::info!("Webhook middleware called: {} {}", method, path);
 
     // Only intercept resource creation and updates
     let operation = match method.as_str() {
@@ -79,9 +81,13 @@ pub async fn admission_webhook_middleware(
 
     // Parse resource type from path
     let (group, version, resource, kind) = match parse_resource_from_path(path) {
-        Some(r) => r,
+        Some(r) => {
+            tracing::info!("Parsed resource: group={}, version={}, resource={}, kind={}", r.0, r.1, r.2, r.3);
+            r
+        }
         None => {
             // Not a resource API path, pass through
+            tracing::debug!("Not a resource API path: {}", path);
             return Ok(next.run(request).await);
         }
     };
@@ -93,19 +99,25 @@ pub async fn admission_webhook_middleware(
         .and_then(|h| h.to_str().ok())
         .unwrap_or("");
 
+    tracing::info!("Content-Type: {}", content_type);
+
     if !content_type.contains("application/json") && !content_type.is_empty() {
         // Not JSON (might be protobuf), pass through
-        debug!("Skipping webhook for non-JSON content-type: {}", content_type);
+        tracing::info!("Skipping webhook - non-JSON content-type: {}", content_type);
         return Ok(next.run(request).await);
     }
 
     // Extract namespace from path if present
     let namespace = extract_namespace_from_path(path);
+    tracing::info!("Namespace: {:?}", namespace);
 
     // Get the request body (take ownership and replace with empty body)
     let body = std::mem::replace(request.body_mut(), axum::body::Body::empty());
     let body_bytes = match axum::body::to_bytes(body, usize::MAX).await {
-        Ok(bytes) => bytes,
+        Ok(bytes) => {
+            tracing::info!("Read {} bytes from request body", bytes.len());
+            bytes
+        }
         Err(e) => {
             error!("Failed to read request body: {}", e);
             // Reconstruct empty body and pass through
@@ -116,9 +128,12 @@ pub async fn admission_webhook_middleware(
 
     // Try to parse as JSON
     let request_body: Value = match serde_json::from_slice(&body_bytes) {
-        Ok(body) => body,
+        Ok(body) => {
+            tracing::info!("Successfully parsed JSON body");
+            body
+        }
         Err(e) => {
-            debug!("Failed to parse request body as JSON: {}", e);
+            tracing::info!("Failed to parse request body as JSON: {}", e);
             // Not valid JSON, reconstruct body and pass through
             *request.body_mut() = axum::body::Body::from(body_bytes);
             return Ok(next.run(request).await);
@@ -154,7 +169,7 @@ pub async fn admission_webhook_middleware(
         options: None,
     };
 
-    debug!(
+    tracing::info!(
         "Admission request for {} {}/{} (operation: {:?})",
         admission_request.kind.kind,
         admission_request.namespace.as_deref().unwrap_or("cluster"),
@@ -163,6 +178,8 @@ pub async fn admission_webhook_middleware(
     );
 
     // Phase 1: Call mutating webhooks (built-in + external)
+    let mut mutated_body = request_body.clone();
+
     if webhook_state.enable_built_in_mutators {
         let mutation_response = mutate_resource(&admission_request);
         if !mutation_response.allowed {
@@ -174,9 +191,17 @@ pub async fn admission_webhook_middleware(
             ));
         }
 
-        // TODO: Apply patches if present
-        if let Some(_patch) = mutation_response.patch {
-            debug!("Built-in mutator returned patches (not yet applied)");
+        // Apply patches if present
+        if let Some(patch_base64) = mutation_response.patch {
+            match apply_json_patch(&mut mutated_body, &patch_base64) {
+                Ok(_) => {
+                    tracing::info!("Applied built-in mutation patches");
+                }
+                Err(e) => {
+                    error!("Failed to apply built-in mutation patches: {}", e);
+                    return Err(ApiError::Internal(format!("Failed to apply patches: {}", e)));
+                }
+            }
         }
     }
 
@@ -191,7 +216,19 @@ pub async fn admission_webhook_middleware(
                         .unwrap_or_else(|| "Mutating webhook denied request".to_string()),
                 ));
             }
-            // TODO: Apply patches
+
+            // Apply patches if present
+            if let Some(patch_base64) = response.patch {
+                match apply_json_patch(&mut mutated_body, &patch_base64) {
+                    Ok(_) => {
+                        tracing::info!("Applied external mutation patches");
+                    }
+                    Err(e) => {
+                        error!("Failed to apply external mutation patches: {}", e);
+                        return Err(ApiError::Internal(format!("Failed to apply patches: {}", e)));
+                    }
+                }
+            }
         }
         Err(e) => {
             error!("Failed to call mutating webhooks: {}", e);
@@ -238,12 +275,35 @@ pub async fn admission_webhook_middleware(
     }
 
     // Webhooks passed, continue with the request
-    debug!("Admission webhooks passed for {}", admission_request.kind.kind);
+    tracing::info!("Admission webhooks passed for {}", admission_request.kind.kind);
 
-    // Reconstruct the request with the original body
-    *request.body_mut() = axum::body::Body::from(body_bytes);
+    // Reconstruct the request with the mutated body
+    let mutated_bytes = serde_json::to_vec(&mutated_body)
+        .map_err(|e| ApiError::Internal(format!("Failed to serialize mutated body: {}", e)))?;
+    *request.body_mut() = axum::body::Body::from(mutated_bytes);
 
     Ok(next.run(request).await)
+}
+
+/// Apply a base64-encoded JSON patch to a JSON value
+fn apply_json_patch(target: &mut Value, patch_base64: &str) -> Result<(), String> {
+    // Decode base64 patch
+    let patch_bytes = base64::decode(patch_base64)
+        .map_err(|e| format!("Failed to decode base64 patch: {}", e))?;
+
+    // Parse patch as JSON
+    let patch_json: Value = serde_json::from_slice(&patch_bytes)
+        .map_err(|e| format!("Failed to parse patch JSON: {}", e))?;
+
+    // Convert to json-patch Patch
+    let patch: json_patch::Patch = serde_json::from_value(patch_json)
+        .map_err(|e| format!("Failed to parse JSON patch: {}", e))?;
+
+    // Apply patch
+    json_patch::patch(target, &patch)
+        .map_err(|e| format!("Failed to apply JSON patch: {}", e))?;
+
+    Ok(())
 }
 
 /// Parse resource type from API path

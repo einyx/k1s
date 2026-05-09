@@ -7,10 +7,12 @@
 //! - Atomic transactions
 
 pub mod backend;
+pub mod encryption;
 pub mod error;
 pub mod watch;
 
 pub use backend::{SledBackend, ResourceStore};
+pub use encryption::SecretEncryption;
 pub use error::{StorageError, StorageResult};
 pub use watch::{WatchEvent, WatchEventType, Watcher};
 
