@@ -13,7 +13,6 @@ use axum::{
     Json,
 };
 use serde::Serialize;
-use std::sync::Arc;
 use tracing::{debug, warn};
 
 use k1s_storage::backend::ResourceStore;
@@ -87,7 +86,7 @@ pub async fn authz_middleware(
     let path = request.uri().path();
 
     // Bypass authorization for discovery/health endpoints
-    if BYPASS_PATHS.iter().any(|p| path == *p || path.starts_with(&format!("{}/", p))) {
+    if BYPASS_PATHS.iter().any(|p| path == *p || path.starts_with(&format!("{p}/"))) {
         return next.run(request).await;
     }
 
@@ -147,7 +146,7 @@ pub async fn authz_middleware(
             warn!("Authorization error: {}", e);
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(AuthzError::forbidden(&format!("Authorization error: {}", e))),
+                Json(AuthzError::forbidden(&format!("Authorization error: {e}"))),
             )
                 .into_response()
         }
@@ -254,11 +253,10 @@ async fn check_authorization(state: &AppState, attrs: &RequestAttributes) -> Res
     }
 
     // If namespaced, also check RoleBindings in that namespace
-    if !attrs.namespace.is_empty() {
-        if check_role_bindings(state, attrs).await? {
+    if !attrs.namespace.is_empty()
+        && check_role_bindings(state, attrs).await? {
             return Ok(true);
         }
-    }
 
     Ok(false)
 }
@@ -271,7 +269,7 @@ async fn check_cluster_role_bindings(state: &AppState, attrs: &RequestAttributes
     let bindings = crb_store
         .list(None)
         .await
-        .map_err(|e| format!("Failed to list ClusterRoleBindings: {}", e))?;
+        .map_err(|e| format!("Failed to list ClusterRoleBindings: {e}"))?;
 
     for binding in bindings {
         // Check if any subject matches the user
@@ -287,7 +285,7 @@ async fn check_cluster_role_bindings(state: &AppState, attrs: &RequestAttributes
         let role = cr_store
             .get(None, &binding.role_ref.name)
             .await
-            .map_err(|e| format!("Failed to get ClusterRole: {}", e))?;
+            .map_err(|e| format!("Failed to get ClusterRole: {e}"))?;
 
         if let Some(role) = role {
             if rules_allow(&role.rules, attrs) {
@@ -308,7 +306,7 @@ async fn check_role_bindings(state: &AppState, attrs: &RequestAttributes) -> Res
     let bindings = rb_store
         .list(Some(&attrs.namespace))
         .await
-        .map_err(|e| format!("Failed to list RoleBindings: {}", e))?;
+        .map_err(|e| format!("Failed to list RoleBindings: {e}"))?;
 
     for binding in bindings {
         // Check if any subject matches the user
@@ -321,13 +319,13 @@ async fn check_role_bindings(state: &AppState, attrs: &RequestAttributes) -> Res
             let role = cr_store
                 .get(None, &binding.role_ref.name)
                 .await
-                .map_err(|e| format!("Failed to get ClusterRole: {}", e))?;
+                .map_err(|e| format!("Failed to get ClusterRole: {e}"))?;
             role.map(|r| r.rules)
         } else {
             let role = role_store
                 .get(Some(&attrs.namespace), &binding.role_ref.name)
                 .await
-                .map_err(|e| format!("Failed to get Role: {}", e))?;
+                .map_err(|e| format!("Failed to get Role: {e}"))?;
             role.map(|r| r.rules)
         };
 
@@ -407,11 +405,10 @@ fn rule_matches(rule: &PolicyRule, attrs: &RequestAttributes) -> bool {
     }
 
     // Check resource names (if specified in rule)
-    if !rule.resource_names.is_empty() && !attrs.name.is_empty() {
-        if !rule.resource_names.iter().any(|n| n == &attrs.name) {
+    if !rule.resource_names.is_empty() && !attrs.name.is_empty()
+        && !rule.resource_names.iter().any(|n| n == &attrs.name) {
             return false;
         }
-    }
 
     true
 }

@@ -3,7 +3,7 @@
 use axum::body::Body;
 use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 
@@ -129,8 +129,7 @@ pub async fn pod_logs(
     // Get container ID from pod status
     let container_id = get_container_id(&pod, params.container.as_deref()).ok_or_else(|| {
         ApiError::BadRequest(format!(
-            "No container found in pod {} (container status may not be available yet)",
-            name
+            "No container found in pod {name} (container status may not be available yet)"
         ))
     })?;
 
@@ -142,8 +141,7 @@ pub async fn pod_logs(
         Ok(rt) => rt,
         Err(e) => {
             return Err(ApiError::Internal(format!(
-                "Failed to connect to container runtime: {}",
-                e
+                "Failed to connect to container runtime: {e}"
             )));
         }
     };
@@ -152,7 +150,7 @@ pub async fn pod_logs(
     let logs = runtime
         .logs(container_id, params.tail_lines)
         .await
-        .map_err(|e| ApiError::Internal(format!("Failed to get logs: {}", e)))?;
+        .map_err(|e| ApiError::Internal(format!("Failed to get logs: {e}")))?;
 
     // Return as plain text
     Ok(Response::builder()
@@ -184,8 +182,7 @@ pub async fn pod_exec(
     // Get container ID from pod status
     let container_id = get_container_id(&pod, params.container.as_deref()).ok_or_else(|| {
         ApiError::BadRequest(format!(
-            "No container found in pod {} (container status may not be available yet)",
-            name
+            "No container found in pod {name} (container status may not be available yet)"
         ))
     })?;
 
@@ -200,8 +197,7 @@ pub async fn pod_exec(
         Ok(rt) => rt,
         Err(e) => {
             return Err(ApiError::Internal(format!(
-                "Failed to connect to container runtime: {}",
-                e
+                "Failed to connect to container runtime: {e}"
             )));
         }
     };
@@ -210,7 +206,7 @@ pub async fn pod_exec(
     let (exit_code, stdout, stderr) = runtime
         .exec(container_id, &params.command)
         .await
-        .map_err(|e| ApiError::Internal(format!("Failed to exec: {}", e)))?;
+        .map_err(|e| ApiError::Internal(format!("Failed to exec: {e}")))?;
 
     Ok(Json(ExecResponse {
         exit_code,

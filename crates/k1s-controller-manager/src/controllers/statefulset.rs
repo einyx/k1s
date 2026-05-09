@@ -10,7 +10,7 @@ use k1s_storage::backend::ResourceStore;
 use k1s_storage::SledBackend;
 use k1s_types::{
     apps_v1::{StatefulSet, StatefulSetStatus, PodManagementPolicyType},
-    ObjectMeta, OwnerReference, PersistentVolumeClaim, PersistentVolumeClaimSpec,
+    ObjectMeta, OwnerReference, PersistentVolumeClaim,
     Pod, PodPhase, TypeMeta,
 };
 use tracing::{debug, info, warn};
@@ -37,7 +37,7 @@ impl StatefulSetController {
 
     /// Get the ordinal index from a pod name (e.g., "myapp-0" -> 0)
     fn pod_ordinal(sts_name: &str, pod_name: &str) -> Option<i32> {
-        let prefix = format!("{}-", sts_name);
+        let prefix = format!("{sts_name}-");
         if pod_name.starts_with(&prefix) {
             pod_name[prefix.len()..].parse().ok()
         } else {
@@ -350,7 +350,7 @@ impl Controller for StatefulSetController {
                 updated_sts.status = Some(StatefulSetStatus {
                     replicas: current_replicas,
                     ready_replicas: ready_count,
-                    current_replicas: current_replicas,
+                    current_replicas,
                     updated_replicas: current_replicas,
                     available_replicas: ready_count,
                     observed_generation: sts.metadata.generation,

@@ -87,7 +87,7 @@ impl PodManager {
             }
             CniImpl::Docker(docker_cni) => {
                 docker_cni.init().await.map_err(|e| {
-                    KubeletError::Runtime(format!("Failed to initialize Docker CNI: {}", e))
+                    KubeletError::Runtime(format!("Failed to initialize Docker CNI: {e}"))
                 })
             }
         }
@@ -206,7 +206,7 @@ impl PodManager {
                 init_container_statuses.push(ContainerStatus {
                     name: container.name.clone(),
                     ready: false,
-                    container_id: Some(format!("docker://{}", container_id)),
+                    container_id: Some(format!("docker://{container_id}")),
                     state: Some(k1s_types::ContainerState {
                         waiting: Some(k1s_types::ContainerStateWaiting {
                             reason: Some("CrashLoopBackOff".to_string()),
@@ -242,7 +242,7 @@ impl PodManager {
                 init_container_statuses.push(ContainerStatus {
                     name: container.name.clone(),
                     ready: false,
-                    container_id: Some(format!("docker://{}", container_id)),
+                    container_id: Some(format!("docker://{container_id}")),
                     state: Some(k1s_types::ContainerState {
                         running: Some(ContainerStateRunning {
                             started_at: Some(chrono::Utc::now()),
@@ -263,7 +263,7 @@ impl PodManager {
                 init_container_statuses.push(ContainerStatus {
                     name: container.name.clone(),
                     ready: false,
-                    container_id: Some(format!("docker://{}", container_id)),
+                    container_id: Some(format!("docker://{container_id}")),
                     state: Some(k1s_types::ContainerState {
                         terminated: Some(k1s_types::ContainerStateTerminated {
                             exit_code,
@@ -287,7 +287,7 @@ impl PodManager {
             init_container_statuses.push(ContainerStatus {
                 name: container.name.clone(),
                 ready: true,
-                container_id: Some(format!("docker://{}", container_id)),
+                container_id: Some(format!("docker://{container_id}")),
                 state: Some(k1s_types::ContainerState {
                     terminated: Some(k1s_types::ContainerStateTerminated {
                         exit_code: 0,
@@ -511,7 +511,7 @@ impl PodManager {
                 container_statuses.push(ContainerStatus {
                     name: container.name.clone(),
                     ready: is_ready,
-                    container_id: Some(format!("docker://{}", container_id)),
+                    container_id: Some(format!("docker://{container_id}")),
                     image: Some(container.image.clone()),
                     state: Some(state),
                     ..Default::default()
@@ -539,8 +539,8 @@ impl PodManager {
             // Determine pod phase
             let all_running = container_statuses.iter().all(|s| s.ready);
             let any_failed = container_statuses.iter().any(|s| {
-                s.state.as_ref().map_or(false, |state| {
-                    state.terminated.as_ref().map_or(false, |t| t.exit_code != 0)
+                s.state.as_ref().is_some_and(|state| {
+                    state.terminated.as_ref().is_some_and(|t| t.exit_code != 0)
                 })
             });
 
@@ -570,7 +570,7 @@ impl PodManager {
         let result = match &self.cni {
             CniImpl::Linux(cni) => {
                 // Linux CNI with network namespaces
-                let netns_path = format!("/var/run/netns/{}", pod_uid);
+                let netns_path = format!("/var/run/netns/{pod_uid}");
                 cni.add(pod_uid, &netns_path, "eth0")
             }
             CniImpl::Docker(cni) => {
@@ -695,7 +695,7 @@ impl PodManager {
 
         match &self.cni {
             CniImpl::Linux(cni) => {
-                let netns_path = format!("/var/run/netns/{}", pod_uid);
+                let netns_path = format!("/var/run/netns/{pod_uid}");
                 if let Err(e) = cni.del(pod_uid, &netns_path, "eth0") {
                     warn!(
                         "Failed to clean up network for pod {}/{}: {}",
@@ -788,7 +788,7 @@ impl PodManager {
 fn cni_result_from_ip(ip: Ipv4Addr, gateway: &str) -> CniResult {
     CniResult {
         ips: vec![CniIp {
-            address: format!("{}/24", ip),
+            address: format!("{ip}/24"),
             gateway: Some(gateway.to_string()),
             interface: Some(0),
         }],

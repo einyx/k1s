@@ -73,7 +73,7 @@ pub async fn run(args: AgentArgs) -> Result<()> {
         Ok(_) => info!("Successfully connected to API server"),
         Err(e) => {
             error!("Failed to connect to API server: {}", e);
-            return Err(anyhow::anyhow!("Failed to connect to API server: {}", e));
+            return Err(anyhow::anyhow!("Failed to connect to API server: {e}"));
         }
     }
 
@@ -172,7 +172,7 @@ async fn register_node(client: &K1sClient, node_name: &str, args: &AgentArgs) ->
             // Node doesn't exist, create it
         }
         Err(e) => {
-            return Err(anyhow::anyhow!("Failed to check node: {}", e));
+            return Err(anyhow::anyhow!("Failed to check node: {e}"));
         }
     }
 

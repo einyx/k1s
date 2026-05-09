@@ -66,16 +66,13 @@ impl Resource for StorageClass {
 
 /// VolumeBindingMode indicates how PersistentVolumeClaims should be bound
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum VolumeBindingMode {
+    #[default]
     Immediate,
     WaitForFirstConsumer,
 }
 
-impl Default for VolumeBindingMode {
-    fn default() -> Self {
-        VolumeBindingMode::Immediate
-    }
-}
 
 /// TopologySelectorTerm defines a term for topology selection
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]

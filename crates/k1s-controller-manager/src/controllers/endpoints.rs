@@ -10,7 +10,7 @@ use k1s_storage::backend::ResourceStore;
 use k1s_storage::SledBackend;
 use k1s_types::{
     EndpointAddress, EndpointPort, EndpointSubset, Endpoints, ObjectMeta, ObjectReference, Pod,
-    PodPhase, Protocol, Service, ServicePort, TypeMeta,
+    PodPhase, Service, ServicePort, TypeMeta,
 };
 use tracing::{debug, info, warn};
 
@@ -88,7 +88,7 @@ impl EndpointsController {
                         k1s_types::IntOrString::String(_) => sp.port, // Named ports not fully supported yet
                     })
                     .unwrap_or(sp.port),
-                protocol: sp.protocol.clone(),
+                protocol: sp.protocol,
                 app_protocol: sp.app_protocol.clone(),
             })
             .collect()

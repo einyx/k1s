@@ -47,7 +47,7 @@ impl IntoResponse for ApiError {
                 ErrorResponse::new(
                     StatusCode::NOT_FOUND,
                     "NotFound",
-                    &format!("{} \"{}\" not found", kind, name),
+                    &format!("{kind} \"{name}\" not found"),
                 ),
             ),
             ApiError::AlreadyExists { kind, name } => (
@@ -55,7 +55,7 @@ impl IntoResponse for ApiError {
                 ErrorResponse::new(
                     StatusCode::CONFLICT,
                     "AlreadyExists",
-                    &format!("{} \"{}\" already exists", kind, name),
+                    &format!("{kind} \"{name}\" already exists"),
                 ),
             ),
             ApiError::Conflict => (

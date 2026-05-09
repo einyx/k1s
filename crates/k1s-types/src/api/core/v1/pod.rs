@@ -1,13 +1,13 @@
 //! Pod resource types
 
-use crate::api::apps::v1::{LabelSelector, LabelSelectorRequirement};
+use crate::api::apps::v1::LabelSelector;
 use crate::meta::{ObjectMeta, TypeMeta};
 use crate::resource::{Resource, ResourceScope};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use super::common::{LocalObjectReference, NodeSelector, NodeSelectorRequirement, NodeSelectorTerm};
-use super::container::{Container, ContainerStatus, SecurityContext};
+use super::common::{LocalObjectReference, NodeSelector, NodeSelectorTerm};
+use super::container::{Container, ContainerStatus};
 use super::volume::Volume;
 
 /// Pod is a collection of containers that share resources

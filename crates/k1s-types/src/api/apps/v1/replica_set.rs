@@ -1,6 +1,5 @@
 //! ReplicaSet resource type (apps/v1)
 
-use crate::api::core::v1::PodSpec;
 use crate::meta::{ObjectMeta, TypeMeta};
 use crate::resource::{Resource, ResourceScope};
 use serde::{Deserialize, Serialize};

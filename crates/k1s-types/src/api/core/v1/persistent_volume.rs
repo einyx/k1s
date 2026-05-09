@@ -115,30 +115,24 @@ pub enum PersistentVolumeAccessMode {
 
 /// PersistentVolumeReclaimPolicy describes a policy for PV reclaim
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum PersistentVolumeReclaimPolicy {
+    #[default]
     Retain,
     Recycle,
     Delete,
 }
 
-impl Default for PersistentVolumeReclaimPolicy {
-    fn default() -> Self {
-        PersistentVolumeReclaimPolicy::Retain
-    }
-}
 
 /// PersistentVolumeMode describes how a volume is intended to be consumed
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum PersistentVolumeMode {
+    #[default]
     Filesystem,
     Block,
 }
 
-impl Default for PersistentVolumeMode {
-    fn default() -> Self {
-        PersistentVolumeMode::Filesystem
-    }
-}
 
 /// PersistentVolumePhase indicates the phase of a PV
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

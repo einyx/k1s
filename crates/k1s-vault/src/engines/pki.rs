@@ -62,15 +62,15 @@ impl PkiEngine {
         ttl_days: i64,
     ) -> VaultResult<CertificateAuthority> {
         // Check if CA exists
-        let ca_path = format!("pki/ca/{}", name);
+        let ca_path = format!("pki/ca/{name}");
         if self.storage.get(&ca_path).await?.is_some() {
-            return Err(VaultError::InvalidInput(format!("CA {} already exists", name)));
+            return Err(VaultError::InvalidInput(format!("CA {name} already exists")));
         }
 
         // Generate RSA keypair
         use rsa::rand_core::OsRng;
         let private_key = RsaPrivateKey::new(&mut OsRng, 2048)
-            .map_err(|e| VaultError::CertificateFailed(format!("Key generation failed: {}", e)))?;
+            .map_err(|e| VaultError::CertificateFailed(format!("Key generation failed: {e}")))?;
 
         let _public_key = RsaPublicKey::from(&private_key);
 
@@ -79,18 +79,17 @@ impl PkiEngine {
         let not_after = not_before + Duration::days(ttl_days);
 
         let private_key_pem = private_key.to_pkcs8_pem(LineEnding::LF)
-            .map_err(|e| VaultError::CertificateFailed(format!("PEM encoding failed: {}", e)))?
+            .map_err(|e| VaultError::CertificateFailed(format!("PEM encoding failed: {e}")))?
             .to_string();
 
         // Simplified cert (in production, use x509-cert builder)
         let cert_pem = format!(
             "-----BEGIN CERTIFICATE-----\n\
-            Simplified CA Certificate for {}\n\
-            CN: {}\n\
-            Not Before: {}\n\
-            Not After: {}\n\
-            -----END CERTIFICATE-----",
-            name, common_name, not_before, not_after
+            Simplified CA Certificate for {name}\n\
+            CN: {common_name}\n\
+            Not Before: {not_before}\n\
+            Not After: {not_after}\n\
+            -----END CERTIFICATE-----"
         );
 
         let ca = CertificateAuthority {
@@ -123,7 +122,7 @@ impl PkiEngine {
         let entry = self.audit.request(
             AuditOperation::PkiIssue,
             auth,
-            format!("/pki/issue/{}", ca_name),
+            format!("/pki/issue/{ca_name}"),
             Some(serde_json::json!({
                 "common_name": request.common_name,
                 "ttl": request.ttl,
@@ -132,9 +131,9 @@ impl PkiEngine {
 
         let result: VaultResult<IssuedCertificate> = async {
             // Load CA
-            let ca_path = format!("pki/ca/{}", ca_name);
+            let ca_path = format!("pki/ca/{ca_name}");
             let ca_data = self.storage.get(&ca_path).await?
-                .ok_or_else(|| VaultError::KeyNotFound(format!("CA {}", ca_name)))?;
+                .ok_or_else(|| VaultError::KeyNotFound(format!("CA {ca_name}")))?;
 
             let mut ca: CertificateAuthority = serde_json::from_slice(&ca_data)
                 .map_err(|e| VaultError::Internal(e.to_string()))?;
@@ -147,10 +146,10 @@ impl PkiEngine {
             // Generate keypair for certificate
             use rsa::rand_core::OsRng;
             let private_key = RsaPrivateKey::new(&mut OsRng, 2048)
-                .map_err(|e| VaultError::CertificateFailed(format!("Key generation failed: {}", e)))?;
+                .map_err(|e| VaultError::CertificateFailed(format!("Key generation failed: {e}")))?;
 
             let private_key_pem = private_key.to_pkcs8_pem(LineEnding::LF)
-                .map_err(|e| VaultError::CertificateFailed(format!("PEM encoding failed: {}", e)))?
+                .map_err(|e| VaultError::CertificateFailed(format!("PEM encoding failed: {e}")))?
                 .to_string();
 
             // Generate serial number
@@ -190,7 +189,7 @@ impl PkiEngine {
             };
 
             // Store certificate
-            let cert_path = format!("pki/certs/{}/{}", ca_name, serial);
+            let cert_path = format!("pki/certs/{ca_name}/{serial}");
             let cert_data = serde_json::to_vec(&certificate)
                 .map_err(|e| VaultError::Internal(e.to_string()))?;
             self.storage.put(&cert_path, cert_data).await?;
@@ -229,14 +228,14 @@ impl PkiEngine {
         let entry = self.audit.request(
             AuditOperation::PkiRevoke,
             auth,
-            format!("/pki/revoke/{}/{}", ca_name, serial),
+            format!("/pki/revoke/{ca_name}/{serial}"),
             None,
         );
 
         let result: VaultResult<()> = async {
-            let cert_path = format!("pki/certs/{}/{}", ca_name, serial);
+            let cert_path = format!("pki/certs/{ca_name}/{serial}");
             let cert_data = self.storage.get(&cert_path).await?
-                .ok_or_else(|| VaultError::SecretNotFound(format!("Certificate {}", serial)))?;
+                .ok_or_else(|| VaultError::SecretNotFound(format!("Certificate {serial}")))?;
 
             let mut certificate: IssuedCertificate = serde_json::from_slice(&cert_data)
                 .map_err(|e| VaultError::Internal(e.to_string()))?;
@@ -268,7 +267,7 @@ impl PkiEngine {
 
     /// List certificates for a CA
     pub async fn list_certificates(&self, ca_name: &str) -> VaultResult<Vec<String>> {
-        let prefix = format!("pki/certs/{}/", ca_name);
+        let prefix = format!("pki/certs/{ca_name}/");
         let entries = self.storage.list(&prefix).await?;
 
         let serials: Vec<String> = entries
@@ -285,14 +284,14 @@ impl PkiEngine {
     fn parse_ttl(&self, ttl: &str) -> VaultResult<Duration> {
         let (num_str, unit) = ttl.split_at(ttl.len() - 1);
         let num: i64 = num_str.parse()
-            .map_err(|_| VaultError::InvalidInput(format!("Invalid TTL: {}", ttl)))?;
+            .map_err(|_| VaultError::InvalidInput(format!("Invalid TTL: {ttl}")))?;
 
         match unit {
             "h" => Ok(Duration::hours(num)),
             "d" => Ok(Duration::days(num)),
             "w" => Ok(Duration::weeks(num)),
             "y" => Ok(Duration::days(num * 365)),
-            _ => Err(VaultError::InvalidInput(format!("Invalid TTL unit: {}", unit))),
+            _ => Err(VaultError::InvalidInput(format!("Invalid TTL unit: {unit}"))),
         }
     }
 }

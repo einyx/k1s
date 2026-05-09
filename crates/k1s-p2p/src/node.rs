@@ -7,7 +7,6 @@ use std::time::Duration;
 
 use futures::StreamExt;
 use libp2p::{
-    core::multiaddr::Protocol,
     gossipsub,
     identity::Keypair,
     kad,
@@ -126,7 +125,7 @@ impl P2pNode {
             self.config.listen_addr.port()
         )
         .parse()
-        .map_err(|e| P2pError::Transport(format!("Invalid listen address: {}", e)))?;
+        .map_err(|e| P2pError::Transport(format!("Invalid listen address: {e}")))?;
 
         self.swarm
             .listen_on(listen_addr.clone())
@@ -230,7 +229,7 @@ impl P2pNode {
                             error!("Failed to send response: {:?}", e);
                         }
                     }
-                    request_response::Message::Response { response, .. } => {
+                    request_response::Message::Response {  .. } => {
                         debug!("Received response from {}", peer);
                     }
                 }

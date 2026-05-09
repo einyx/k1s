@@ -146,16 +146,13 @@ pub struct PersistentVolumeClaimTemplate {
 
 /// PodManagementPolicyType defines the policy for creating pods
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum PodManagementPolicyType {
+    #[default]
     OrderedReady,
     Parallel,
 }
 
-impl Default for PodManagementPolicyType {
-    fn default() -> Self {
-        PodManagementPolicyType::OrderedReady
-    }
-}
 
 /// StatefulSetUpdateStrategy indicates the strategy for updating a StatefulSet
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -171,16 +168,13 @@ pub struct StatefulSetUpdateStrategy {
 
 /// StatefulSetUpdateStrategyType is a strategy for StatefulSet updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum StatefulSetUpdateStrategyType {
+    #[default]
     RollingUpdate,
     OnDelete,
 }
 
-impl Default for StatefulSetUpdateStrategyType {
-    fn default() -> Self {
-        StatefulSetUpdateStrategyType::RollingUpdate
-    }
-}
 
 /// RollingUpdateStatefulSetStrategy is used for rolling update
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -208,16 +202,13 @@ pub struct StatefulSetPersistentVolumeClaimRetentionPolicy {
 
 /// PersistentVolumeClaimRetentionPolicyType is a policy for PVC retention
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum PersistentVolumeClaimRetentionPolicyType {
+    #[default]
     Retain,
     Delete,
 }
 
-impl Default for PersistentVolumeClaimRetentionPolicyType {
-    fn default() -> Self {
-        PersistentVolumeClaimRetentionPolicyType::Retain
-    }
-}
 
 /// StatefulSetOrdinals describes the policy for assigning ordinals to pods
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]

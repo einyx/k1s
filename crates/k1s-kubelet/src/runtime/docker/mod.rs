@@ -9,7 +9,6 @@ use bollard::Docker;
 use futures::StreamExt;
 use k1s_types::Pod;
 use std::collections::HashMap;
-use std::path::PathBuf;
 use tracing::{debug, info};
 
 use super::{ContainerInfo, ContainerRuntime, ContainerState, ContainerEnvConfig, ImageInfo, RuntimeConfig};
@@ -69,7 +68,7 @@ impl DockerRuntime {
 
         // Fall back to bollard's default detection (uses DOCKER_HOST env var)
         Docker::connect_with_local_defaults()
-            .map_err(|e| KubeletError::Runtime(format!("Failed to connect to Docker. Tried common socket paths. Error: {}", e)))
+            .map_err(|e| KubeletError::Runtime(format!("Failed to connect to Docker. Tried common socket paths. Error: {e}")))
     }
 }
 
@@ -108,7 +107,7 @@ impl ContainerRuntime for DockerRuntime {
             .containers
             .iter()
             .find(|c| c.name == container_name)
-            .ok_or_else(|| KubeletError::Pod(format!("Container {} not found", container_name)))?;
+            .ok_or_else(|| KubeletError::Pod(format!("Container {container_name} not found")))?;
 
         // Build environment variables from container spec
         let mut env: Vec<String> = container_spec
@@ -138,8 +137,7 @@ impl ContainerRuntime for DockerRuntime {
 
             if let Err(e) = std::fs::create_dir_all(&host_path) {
                 return Err(KubeletError::Runtime(format!(
-                    "Failed to create volume directory: {}",
-                    e
+                    "Failed to create volume directory: {e}"
                 )));
             }
 
@@ -148,8 +146,7 @@ impl ContainerRuntime for DockerRuntime {
                 let file_path = host_path.join(filename);
                 if let Err(e) = std::fs::write(&file_path, content) {
                     return Err(KubeletError::Runtime(format!(
-                        "Failed to write volume file {}: {}",
-                        filename, e
+                        "Failed to write volume file {filename}: {e}"
                     )));
                 }
                 debug!("Wrote volume file: {:?}", file_path);
@@ -161,7 +158,7 @@ impl ContainerRuntime for DockerRuntime {
                 typ: Some(MountTypeEnum::BIND),
                 read_only: Some(container_spec.volume_mounts.iter()
                     .find(|vm| vm.mount_path == *mount_path)
-                    .map_or(false, |vm| vm.read_only)),
+                    .is_some_and(|vm| vm.read_only)),
                 ..Default::default()
             });
         }
@@ -182,8 +179,7 @@ impl ContainerRuntime for DockerRuntime {
                     let host_path = data_dir.join(format!("emptydir-{}", volume_mount.name));
                     if let Err(e) = std::fs::create_dir_all(&host_path) {
                         return Err(KubeletError::Runtime(format!(
-                            "Failed to create emptyDir: {}",
-                            e
+                            "Failed to create emptyDir: {e}"
                         )));
                     }
                     mounts.push(Mount {
@@ -212,7 +208,7 @@ impl ContainerRuntime for DockerRuntime {
 
         // Build user string (uid:gid format)
         let user = match (run_as_user, run_as_group) {
-            (Some(uid), Some(gid)) => Some(format!("{}:{}", uid, gid)),
+            (Some(uid), Some(gid)) => Some(format!("{uid}:{gid}")),
             (Some(uid), None) => Some(uid.to_string()),
             _ => None,
         };
@@ -345,7 +341,7 @@ impl ContainerRuntime for DockerRuntime {
     }
 
     async fn list_containers(&self, pod_uid: &str) -> KubeletResult<Vec<ContainerInfo>> {
-        let label_filter = format!("k1s.pod.uid={}", pod_uid);
+        let label_filter = format!("k1s.pod.uid={pod_uid}");
         let mut filters = HashMap::new();
         filters.insert("label", vec![label_filter.as_str()]);
 

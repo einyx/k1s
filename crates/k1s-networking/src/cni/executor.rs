@@ -92,8 +92,7 @@ impl CniExecutor {
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(NetworkError::Cni(format!(
-                "CNI plugin failed: {}",
-                stderr
+                "CNI plugin failed: {stderr}"
             )));
         }
 

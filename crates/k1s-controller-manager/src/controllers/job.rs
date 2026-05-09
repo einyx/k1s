@@ -2,7 +2,6 @@
 //!
 //! Manages batch jobs by creating pods and tracking completion/failure status.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -225,8 +224,7 @@ impl Controller for JobController {
                     last_transition_time: Some(Utc::now()),
                     reason: Some("BackoffLimitExceeded".to_string()),
                     message: Some(format!(
-                        "Job has reached the specified backoff limit ({})",
-                        backoff_limit
+                        "Job has reached the specified backoff limit ({backoff_limit})"
                     )),
                     ..Default::default()
                 });

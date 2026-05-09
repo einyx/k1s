@@ -266,8 +266,7 @@ impl K1sDns {
             [service, namespace] => Ok((service.to_string(), namespace.to_string())),
             [service] => Ok((service.to_string(), "default".to_string())),
             _ => Err(DnsError::Parse(format!(
-                "Invalid service name format: {}",
-                name
+                "Invalid service name format: {name}"
             ))),
         }
     }

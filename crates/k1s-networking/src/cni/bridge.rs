@@ -355,7 +355,7 @@ impl BridgeCni {
 
         CniResult {
             ips: vec![CniIp {
-                address: format!("{}/24", ip),
+                address: format!("{ip}/24"),
                 gateway: Some(self.config.gateway.to_string()),
                 interface: Some(0),
             }],
@@ -378,7 +378,7 @@ fn run_ip(args: &[&str]) -> NetworkResult<()> {
     let output = Command::new("ip")
         .args(args)
         .output()
-        .map_err(|e| NetworkError::Cni(format!("Failed to run ip command: {}", e)))?;
+        .map_err(|e| NetworkError::Cni(format!("Failed to run ip command: {e}")))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
@@ -408,7 +408,7 @@ fn run_ip_netns(netns_path: &str, args: &[&str]) -> NetworkResult<()> {
         .arg("ip")
         .args(args)
         .output()
-        .map_err(|e| NetworkError::Cni(format!("Failed to run nsenter: {}", e)))?;
+        .map_err(|e| NetworkError::Cni(format!("Failed to run nsenter: {e}")))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

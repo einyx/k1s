@@ -6,10 +6,8 @@ use std::sync::Arc;
 
 use axum::{
     extract::{Request, State},
-    http::StatusCode,
     middleware::Next,
-    response::{IntoResponse, Response},
-    Json,
+    response::Response,
 };
 use k1s_storage::SledBackend;
 use k1s_types::api::admission::v1::{
@@ -18,7 +16,7 @@ use k1s_types::api::admission::v1::{
 use serde_json::Value;
 use tracing::{debug, error};
 use uuid::Uuid;
-use base64;
+use base64::Engine;
 use json_patch;
 
 use super::invoker::WebhookInvoker;
@@ -199,7 +197,7 @@ pub async fn admission_webhook_middleware(
                 }
                 Err(e) => {
                     error!("Failed to apply built-in mutation patches: {}", e);
-                    return Err(ApiError::Internal(format!("Failed to apply patches: {}", e)));
+                    return Err(ApiError::Internal(format!("Failed to apply patches: {e}")));
                 }
             }
         }
@@ -225,14 +223,14 @@ pub async fn admission_webhook_middleware(
                     }
                     Err(e) => {
                         error!("Failed to apply external mutation patches: {}", e);
-                        return Err(ApiError::Internal(format!("Failed to apply patches: {}", e)));
+                        return Err(ApiError::Internal(format!("Failed to apply patches: {e}")));
                     }
                 }
             }
         }
         Err(e) => {
             error!("Failed to call mutating webhooks: {}", e);
-            return Err(ApiError::Internal(format!("Webhook error: {}", e)));
+            return Err(ApiError::Internal(format!("Webhook error: {e}")));
         }
     }
 
@@ -270,7 +268,7 @@ pub async fn admission_webhook_middleware(
         }
         Err(e) => {
             error!("Failed to call validating webhooks: {}", e);
-            return Err(ApiError::Internal(format!("Webhook error: {}", e)));
+            return Err(ApiError::Internal(format!("Webhook error: {e}")));
         }
     }
 
@@ -279,7 +277,7 @@ pub async fn admission_webhook_middleware(
 
     // Reconstruct the request with the mutated body
     let mutated_bytes = serde_json::to_vec(&mutated_body)
-        .map_err(|e| ApiError::Internal(format!("Failed to serialize mutated body: {}", e)))?;
+        .map_err(|e| ApiError::Internal(format!("Failed to serialize mutated body: {e}")))?;
     *request.body_mut() = axum::body::Body::from(mutated_bytes);
 
     Ok(next.run(request).await)
@@ -288,20 +286,20 @@ pub async fn admission_webhook_middleware(
 /// Apply a base64-encoded JSON patch to a JSON value
 fn apply_json_patch(target: &mut Value, patch_base64: &str) -> Result<(), String> {
     // Decode base64 patch
-    let patch_bytes = base64::decode(patch_base64)
-        .map_err(|e| format!("Failed to decode base64 patch: {}", e))?;
+    let patch_bytes = base64::engine::general_purpose::STANDARD.decode(patch_base64)
+        .map_err(|e| format!("Failed to decode base64 patch: {e}"))?;
 
     // Parse patch as JSON
     let patch_json: Value = serde_json::from_slice(&patch_bytes)
-        .map_err(|e| format!("Failed to parse patch JSON: {}", e))?;
+        .map_err(|e| format!("Failed to parse patch JSON: {e}"))?;
 
     // Convert to json-patch Patch
     let patch: json_patch::Patch = serde_json::from_value(patch_json)
-        .map_err(|e| format!("Failed to parse JSON patch: {}", e))?;
+        .map_err(|e| format!("Failed to parse JSON patch: {e}"))?;
 
     // Apply patch
     json_patch::patch(target, &patch)
-        .map_err(|e| format!("Failed to apply JSON patch: {}", e))?;
+        .map_err(|e| format!("Failed to apply JSON patch: {e}"))?;
 
     Ok(())
 }

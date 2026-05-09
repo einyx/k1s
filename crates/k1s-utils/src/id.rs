@@ -41,8 +41,8 @@ impl ResourceId {
     /// Storage prefix for listing resources of this type
     pub fn list_prefix(api_version: &str, kind: &str, namespace: Option<&str>) -> String {
         match namespace {
-            Some(ns) => format!("/{}/{}/{}/", api_version, kind, ns),
-            None => format!("/{}/{}/", api_version, kind),
+            Some(ns) => format!("/{api_version}/{kind}/{ns}/"),
+            None => format!("/{api_version}/{kind}/"),
         }
     }
 }

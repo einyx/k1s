@@ -279,7 +279,7 @@ impl Controller for CronJobController {
             let mut successful_jobs: Vec<&Job> = owned_jobs
                 .iter()
                 .filter(|j| {
-                    j.status.as_ref().map_or(false, |s| {
+                    j.status.as_ref().is_some_and(|s| {
                         s.conditions
                             .iter()
                             .any(|c| c.r#type == "Complete" && c.status == "True")
@@ -291,7 +291,7 @@ impl Controller for CronJobController {
             let mut failed_jobs: Vec<&Job> = owned_jobs
                 .iter()
                 .filter(|j| {
-                    j.status.as_ref().map_or(false, |s| {
+                    j.status.as_ref().is_some_and(|s| {
                         s.conditions
                             .iter()
                             .any(|c| c.r#type == "Failed" && c.status == "True")

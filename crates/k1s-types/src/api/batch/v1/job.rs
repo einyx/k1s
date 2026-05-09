@@ -1,6 +1,5 @@
 //! Job resource type
 
-use std::collections::BTreeMap;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

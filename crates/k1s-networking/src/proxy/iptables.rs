@@ -121,7 +121,7 @@ impl ServiceProxy for IptablesProxy {
 
         // Add rules for each port
         for port in &spec.ports {
-            let protocol = format!("{:?}", port.protocol.clone().unwrap_or_default()).to_lowercase();
+            let protocol = format!("{:?}", port.protocol.unwrap_or_default()).to_lowercase();
             let target_port = port.target_port.as_ref()
                 .map(|tp| match tp {
                     IntOrString::Int(i) => *i,
@@ -152,7 +152,7 @@ impl ServiceProxy for IptablesProxy {
             // Create endpoint chains and add DNAT rules with probability-based load balancing
             let num_endpoints = port_endpoints.len();
             for (i, (ip, ep_port)) in port_endpoints.iter().enumerate() {
-                let ep_chain = format!("{}-{}", chain_name, i);
+                let ep_chain = format!("{chain_name}-{i}");
 
                 // Create endpoint chain
                 let _ = self.run_iptables(&["-t", "nat", "-N", &ep_chain]);
@@ -162,7 +162,7 @@ impl ServiceProxy for IptablesProxy {
                 self.run_iptables(&[
                     "-t", "nat", "-A", &ep_chain,
                     "-j", "DNAT",
-                    "--to-destination", &format!("{}:{}", ip, ep_port),
+                    "--to-destination", &format!("{ip}:{ep_port}"),
                 ])?;
 
                 // Add jump to endpoint chain from service chain with probability
@@ -192,7 +192,7 @@ impl ServiceProxy for IptablesProxy {
             if matches!(node_port_type, ServiceType::NodePort | ServiceType::LoadBalancer) {
                 for port in &spec.ports {
                     if let Some(node_port) = port.node_port {
-                        let protocol = format!("{:?}", port.protocol.clone().unwrap_or_default()).to_lowercase();
+                        let protocol = format!("{:?}", port.protocol.unwrap_or_default()).to_lowercase();
                         // Add NodePort rule
                         self.run_iptables(&[
                             "-t", "nat", "-A", "K1S-NODEPORTS",

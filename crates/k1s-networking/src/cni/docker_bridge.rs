@@ -83,7 +83,7 @@ impl DockerBridgeCni {
         // If socket path is provided, use it
         if let Some(path) = socket_path {
             return Docker::connect_with_socket(path, 120, bollard::API_DEFAULT_VERSION)
-                .map_err(|e| NetworkError::Cni(format!("Failed to connect to Docker at {}: {}", path, e)));
+                .map_err(|e| NetworkError::Cni(format!("Failed to connect to Docker at {path}: {e}")));
         }
 
         // Try common Docker socket locations
@@ -114,7 +114,7 @@ impl DockerBridgeCni {
 
         // Fall back to local defaults
         Docker::connect_with_local_defaults()
-            .map_err(|e| NetworkError::Cni(format!("Failed to connect to Docker: {}", e)))
+            .map_err(|e| NetworkError::Cni(format!("Failed to connect to Docker: {e}")))
     }
 
     /// Initialize the Docker network
@@ -129,7 +129,7 @@ impl DockerBridgeCni {
                 // Network doesn't exist, create it
             }
             Err(e) => {
-                return Err(NetworkError::Cni(format!("Failed to inspect network: {}", e)));
+                return Err(NetworkError::Cni(format!("Failed to inspect network: {e}")));
             }
         }
 
@@ -156,7 +156,7 @@ impl DockerBridgeCni {
         self.docker
             .create_network(options)
             .await
-            .map_err(|e| NetworkError::Cni(format!("Failed to create network: {}", e)))?;
+            .map_err(|e| NetworkError::Cni(format!("Failed to create network: {e}")))?;
 
         info!(
             "Created Docker network {} with subnet {}",
@@ -234,7 +234,7 @@ impl DockerBridgeCni {
             .map_err(|e| {
                 // Release IP on failure
                 self.release_ip(container_id);
-                NetworkError::Cni(format!("Failed to connect container to network: {}", e))
+                NetworkError::Cni(format!("Failed to connect container to network: {e}"))
             })?;
 
         let ip_cidr = format!("{}/{}", ip, self.config.subnet.prefix());

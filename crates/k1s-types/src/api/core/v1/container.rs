@@ -1,7 +1,6 @@
 //! Container types shared across resources
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 pub use super::common::ResourceRequirements;
 

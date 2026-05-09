@@ -24,7 +24,7 @@ impl ReplicaSetController {
 
     /// Check if a pod is owned by the given ReplicaSet
     fn is_owned_by(pod: &Pod, rs: &ReplicaSet) -> bool {
-        pod.metadata.owner_references.iter().any(|ref owner| {
+        pod.metadata.owner_references.iter().any(|owner| {
             owner.kind == "ReplicaSet"
                 && owner.name == rs.metadata.name
                 && owner.uid == rs.metadata.uid

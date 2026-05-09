@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-use crate::meta::ObjectMeta;
 
 /// AdmissionReview describes an admission review request/response
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

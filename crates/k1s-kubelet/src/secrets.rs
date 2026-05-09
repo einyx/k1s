@@ -44,13 +44,13 @@ impl SecretResolver {
 
         // Resolve envFrom sources
         for env_from in &container.env_from {
-            self.resolve_env_from(&namespace, env_from, &mut result.env_vars)
+            self.resolve_env_from(namespace, env_from, &mut result.env_vars)
                 .await?;
         }
 
         // Resolve individual env vars
         for env_var in &container.env {
-            if let Some(env_str) = self.resolve_env_var(&namespace, env_var).await? {
+            if let Some(env_str) = self.resolve_env_var(namespace, env_var).await? {
                 result.env_vars.push(env_str);
             }
         }
@@ -60,7 +60,7 @@ impl SecretResolver {
             for volume_mount in &container.volume_mounts {
                 // Find the corresponding volume
                 if let Some(volume) = spec.volumes.iter().find(|v| v.name == volume_mount.name) {
-                    if let Some(data) = self.resolve_volume(&namespace, volume).await? {
+                    if let Some(data) = self.resolve_volume(namespace, volume).await? {
                         result.volume_data.insert(volume_mount.mount_path.clone(), data);
                     }
                 }
@@ -84,7 +84,7 @@ impl SecretResolver {
             match self.get_configmap(namespace, &cm_ref.name).await {
                 Ok(Some(cm)) => {
                     for (key, value) in &cm.data {
-                        env_vars.push(format!("{}{}={}", prefix, key, value));
+                        env_vars.push(format!("{prefix}{key}={value}"));
                     }
                 }
                 Ok(None) => {
@@ -112,13 +112,13 @@ impl SecretResolver {
                     for (key, value) in &secret.data {
                         if let Ok(decoded) = STANDARD.decode(value) {
                             if let Ok(str_value) = String::from_utf8(decoded) {
-                                env_vars.push(format!("{}{}={}", prefix, key, str_value));
+                                env_vars.push(format!("{prefix}{key}={str_value}"));
                             }
                         }
                     }
                     // stringData is already plain text
                     for (key, value) in &secret.string_data {
-                        env_vars.push(format!("{}{}={}", prefix, key, value));
+                        env_vars.push(format!("{prefix}{key}={value}"));
                     }
                 }
                 Ok(None) => {
@@ -340,7 +340,7 @@ impl SecretResolver {
         store
             .get(Some(namespace), name)
             .await
-            .map_err(|e| KubeletError::Pod(format!("Failed to get ConfigMap {}: {}", name, e)))
+            .map_err(|e| KubeletError::Pod(format!("Failed to get ConfigMap {name}: {e}")))
     }
 
     async fn get_secret(&self, namespace: &str, name: &str) -> KubeletResult<Option<Secret>> {
@@ -348,7 +348,7 @@ impl SecretResolver {
         store
             .get(Some(namespace), name)
             .await
-            .map_err(|e| KubeletError::Pod(format!("Failed to get Secret {}: {}", name, e)))
+            .map_err(|e| KubeletError::Pod(format!("Failed to get Secret {name}: {e}")))
     }
 }
 
@@ -356,8 +356,8 @@ impl SecretResolver {
 mod tests {
     use super::*;
     use k1s_storage::backend::ResourceStore;
-    use k1s_types::{EnvFromSource, EnvVar, EnvVarSource, ConfigMapEnvSource, SecretEnvSource};
-    use k1s_types::{ConfigMapKeySelector, SecretKeySelector, PodSpec};
+    use k1s_types::{EnvFromSource, EnvVar, EnvVarSource, ConfigMapEnvSource};
+    use k1s_types::{SecretKeySelector, PodSpec};
 
     #[test]
     fn test_resolved_container_env_default() {

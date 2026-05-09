@@ -17,7 +17,7 @@ use k1s_storage::SledBackend;
 use k1s_types::Pod;
 use thiserror::Error;
 use tokio::time::interval;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 pub use runtime::{ContainerRuntime, RuntimeConfig};
 
@@ -221,7 +221,7 @@ impl Kubelet {
 
     /// Send heartbeat to update node status
     async fn heartbeat(&self) -> KubeletResult<()> {
-        use k1s_types::{Node, NodeCondition, NodeConditionType};
+        use k1s_types::{Node, NodeConditionType};
 
         let store = ResourceStore::<Node>::new(self.storage.clone());
 

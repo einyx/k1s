@@ -38,7 +38,7 @@ impl WebhookInvoker {
     /// Call all matching validating webhooks
     pub async fn validate(&self, request: &AdmissionRequest) -> Result<AdmissionResponse, String> {
         let store = ResourceStore::<ValidatingWebhookConfiguration>::new(self.storage.clone());
-        let configs = store.list(None).await.map_err(|e| format!("Failed to list webhook configs: {}", e))?;
+        let configs = store.list(None).await.map_err(|e| format!("Failed to list webhook configs: {e}"))?;
 
         for config in configs {
             for webhook in &config.webhooks {
@@ -84,10 +84,10 @@ impl WebhookInvoker {
     /// Call all matching mutating webhooks
     pub async fn mutate(&self, request: &AdmissionRequest) -> Result<AdmissionResponse, String> {
         let store = ResourceStore::<MutatingWebhookConfiguration>::new(self.storage.clone());
-        let configs = store.list(None).await.map_err(|e| format!("Failed to list webhook configs: {}", e))?;
+        let configs = store.list(None).await.map_err(|e| format!("Failed to list webhook configs: {e}"))?;
 
         let mut combined_patches = Vec::new();
-        let mut current_request = request.clone();
+        let current_request = request.clone();
 
         for config in configs {
             for webhook in &config.webhooks {
@@ -163,7 +163,7 @@ impl WebhookInvoker {
                 .send()
         ).await
             .map_err(|_| "Webhook request timed out".to_string())?
-            .map_err(|e| format!("Webhook request failed: {}", e))?;
+            .map_err(|e| format!("Webhook request failed: {e}"))?;
 
         if !response.status().is_success() {
             return Err(format!("Webhook returned status: {}", response.status()));
@@ -172,7 +172,7 @@ impl WebhookInvoker {
         let review_response: AdmissionReview = response
             .json()
             .await
-            .map_err(|e| format!("Failed to parse webhook response: {}", e))?;
+            .map_err(|e| format!("Failed to parse webhook response: {e}"))?;
 
         review_response.response.ok_or("Webhook response missing".to_string())
     }

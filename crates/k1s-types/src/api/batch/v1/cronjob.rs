@@ -79,17 +79,14 @@ pub struct CronJobSpec {
 
 /// ConcurrencyPolicy describes how to handle concurrent jobs
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum ConcurrencyPolicy {
+    #[default]
     Allow,
     Forbid,
     Replace,
 }
 
-impl Default for ConcurrencyPolicy {
-    fn default() -> Self {
-        ConcurrencyPolicy::Allow
-    }
-}
 
 /// JobTemplateSpec describes the data a Job should have when created from a template
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]

@@ -60,7 +60,7 @@ pub async fn transit_encrypt(
     };
 
     let plaintext = BASE64.decode(&request.plaintext)
-        .map_err(|e| ApiError::BadRequest(format!("Invalid base64: {}", e)))?;
+        .map_err(|e| ApiError::BadRequest(format!("Invalid base64: {e}")))?;
 
     let ciphertext = state.vault.transit.encrypt(&key_name, &plaintext, auth).await
         .map_err(|e| ApiError::Internal(e.to_string()))?;

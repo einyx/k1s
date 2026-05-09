@@ -80,15 +80,15 @@ impl ProbeExecutor {
         let path = action.path.as_deref().unwrap_or("/");
         let scheme = action.scheme.as_deref().unwrap_or("HTTP").to_lowercase();
 
-        let url = format!("{}://{}:{}{}", scheme, host, port, path);
+        let url = format!("{scheme}://{host}:{port}{path}");
         debug!("Executing HTTP probe: {}", url);
 
         // Simple HTTP GET using TCP
         match tokio::time::timeout(timeout, async {
-            self.simple_http_get(&host, port as u16, path, &scheme).await
+            self.simple_http_get(host, port as u16, path, &scheme).await
         }).await {
             Ok(Ok(status)) => {
-                if status >= 200 && status < 400 {
+                if (200..400).contains(&status) {
                     ProbeResult::Success
                 } else {
                     warn!("HTTP probe failed with status {}", status);
@@ -117,24 +117,23 @@ impl ProbeExecutor {
         use tokio::io::{AsyncReadExt, AsyncWriteExt};
         use tokio::net::TcpStream;
 
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         let mut stream = TcpStream::connect(&addr).await.map_err(|e| {
-            KubeletError::Runtime(format!("Failed to connect to {}: {}", addr, e))
+            KubeletError::Runtime(format!("Failed to connect to {addr}: {e}"))
         })?;
 
         // Send HTTP request
         let request = format!(
-            "GET {} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n\r\n",
-            path, host
+            "GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
         );
         stream.write_all(request.as_bytes()).await.map_err(|e| {
-            KubeletError::Runtime(format!("Failed to send HTTP request: {}", e))
+            KubeletError::Runtime(format!("Failed to send HTTP request: {e}"))
         })?;
 
         // Read response
         let mut response = Vec::new();
         stream.read_to_end(&mut response).await.map_err(|e| {
-            KubeletError::Runtime(format!("Failed to read HTTP response: {}", e))
+            KubeletError::Runtime(format!("Failed to read HTTP response: {e}"))
         })?;
 
         // Parse status code
@@ -163,7 +162,7 @@ impl ProbeExecutor {
             IntOrString::String(s) => s.parse().unwrap_or(80),
         };
 
-        let addr = format!("{}:{}", host, port);
+        let addr = format!("{host}:{port}");
         debug!("Executing TCP probe: {}", addr);
 
         match tokio::time::timeout(timeout, async {
@@ -219,6 +218,7 @@ impl ProbeExecutor {
 
 /// Probe state tracker for a container
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub struct ProbeState {
     /// Number of consecutive successes
     pub success_count: i32,
@@ -228,15 +228,6 @@ pub struct ProbeState {
     pub has_succeeded: bool,
 }
 
-impl Default for ProbeState {
-    fn default() -> Self {
-        Self {
-            success_count: 0,
-            failure_count: 0,
-            has_succeeded: false,
-        }
-    }
-}
 
 impl ProbeState {
     /// Update state based on probe result

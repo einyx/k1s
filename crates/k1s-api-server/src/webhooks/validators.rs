@@ -2,7 +2,6 @@
 
 use k1s_types::api::admission::v1::{AdmissionRequest, AdmissionResponse};
 use k1s_types::{Pod, Deployment, StatefulSet, DaemonSet};
-use serde_json::Value;
 use tracing::debug;
 
 /// Validates Pod resources
@@ -131,7 +130,7 @@ pub fn validate_deployment(request: &AdmissionRequest) -> AdmissionResponse {
         if replicas < 0 {
             return AdmissionResponse::deny(
                 request.uid.clone(),
-                format!("Replicas cannot be negative: {}", replicas),
+                format!("Replicas cannot be negative: {replicas}"),
             );
         }
     }
@@ -149,7 +148,7 @@ pub fn validate_deployment(request: &AdmissionRequest) -> AdmissionResponse {
         if spec.template.metadata.labels.get(key) != Some(value) {
             return AdmissionResponse::deny(
                 request.uid.clone(),
-                format!("Selector label {}={} not found in pod template labels", key, value),
+                format!("Selector label {key}={value} not found in pod template labels"),
             );
         }
     }
@@ -168,8 +167,7 @@ pub fn validate_deployment(request: &AdmissionRequest) -> AdmissionResponse {
     if let Some(replicas) = spec.replicas {
         if replicas > 100 {
             response = response.with_warning(format!(
-                "High replica count ({}), ensure cluster has sufficient resources",
-                replicas
+                "High replica count ({replicas}), ensure cluster has sufficient resources"
             ));
         }
     }
@@ -211,7 +209,7 @@ pub fn validate_statefulset(request: &AdmissionRequest) -> AdmissionResponse {
         if spec.template.metadata.labels.get(key) != Some(value) {
             return AdmissionResponse::deny(
                 request.uid.clone(),
-                format!("Selector label {}={} not found in pod template labels", key, value),
+                format!("Selector label {key}={value} not found in pod template labels"),
             );
         }
     }
@@ -245,7 +243,7 @@ pub fn validate_daemonset(request: &AdmissionRequest) -> AdmissionResponse {
         if spec.template.metadata.labels.get(key) != Some(value) {
             return AdmissionResponse::deny(
                 request.uid.clone(),
-                format!("Selector label {}={} not found in pod template labels", key, value),
+                format!("Selector label {key}={value} not found in pod template labels"),
             );
         }
     }
@@ -274,6 +272,7 @@ mod tests {
     use super::*;
     use k1s_types::api::admission::v1::{GroupVersionKind, GroupVersionResource, Operation, UserInfo};
     use k1s_types::{PodSpec, Container, ObjectMeta};
+    use serde_json::Value;
 
     fn make_request(kind: &str, object: Value) -> AdmissionRequest {
         AdmissionRequest {

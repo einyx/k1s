@@ -7,11 +7,11 @@ use k1s_types::{
               DeploymentStrategyType, LabelSelector, PodTemplateSpec, RollingUpdateDeployment},
     ConfigMap, Container, ContainerPort, EnvVar, ObjectMeta, Pod, PodSpec, Protocol,
     ResourceRequirements, Secret, Service, ServicePort, ServiceSpec, ServiceType, TypeMeta,
-    Volume, VolumeMount, VolumeSource, ConfigMapVolumeSource, SecretVolumeSource,
+    Volume, VolumeMount, VolumeSource,
     EmptyDirVolumeSource, HostPathVolumeSource,
 };
 
-use super::parser::{ComposeFile, ComposePort, ComposeService};
+use super::parser::{ComposeFile, ComposeService};
 
 /// Kubernetes resources generated from a Compose / Swarm stack file
 #[derive(Debug, Default)]
@@ -343,7 +343,7 @@ impl ComposeTranslator {
     fn translate_container(&self, name: &str, service: &ComposeService) -> Container {
         let image = service.image.clone().unwrap_or_else(|| {
             // If no image, use build context as hint
-            format!("{}:latest", name)
+            format!("{name}:latest")
         });
 
         // Environment variables
@@ -388,7 +388,7 @@ impl ComposeTranslator {
             .map(|(i, v)| {
                 let (_, target, read_only) = v.parse();
                 VolumeMount {
-                    name: format!("{}-vol-{}", name, i),
+                    name: format!("{name}-vol-{i}"),
                     mount_path: target,
                     read_only,
                     ..Default::default()
@@ -475,7 +475,7 @@ impl ComposeTranslator {
             .enumerate()
             .map(|(i, v)| {
                 let (source, _, _) = v.parse();
-                let vol_name = format!("{}-vol-{}", name, i);
+                let vol_name = format!("{name}-vol-{i}");
 
                 let source = match source {
                     Some(src) if src.starts_with('/') || src.starts_with('.') => {
@@ -527,7 +527,7 @@ impl ComposeTranslator {
             .map(|(i, p)| {
                 let (host_port, container_port, protocol) = p.parse();
                 ServicePort {
-                    name: Some(format!("port-{}", i)),
+                    name: Some(format!("port-{i}")),
                     port: host_port.unwrap_or(container_port) as i32,
                     target_port: Some(k1s_types::IntOrString::Int(container_port as i32)),
                     protocol: Some(match protocol.to_lowercase().as_str() {
@@ -599,7 +599,7 @@ fn parse_placement_constraints(constraints: &[String]) -> BTreeMap<String, Strin
             let value = parts[1].trim().to_string();
             if key == "node.role" {
                 selector.insert(
-                    format!("node-role.kubernetes.io/{}", value),
+                    format!("node-role.kubernetes.io/{value}"),
                     String::new(),
                 );
             } else if let Some(label_key) = key.strip_prefix("node.labels.") {

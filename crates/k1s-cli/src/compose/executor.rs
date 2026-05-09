@@ -251,7 +251,7 @@ impl ComposeExecutor {
 
     async fn up_service(&self, service_name: &str, service: &ComposeService) -> Result<()> {
         let image = service.image.as_ref().ok_or_else(|| {
-            anyhow::anyhow!("Service {} has no image (build not supported)", service_name)
+            anyhow::anyhow!("Service {service_name} has no image (build not supported)")
         })?;
 
         self.ensure_image(image).await?;
@@ -343,7 +343,7 @@ impl ComposeExecutor {
         service: &ComposeService,
         replica: u32,
     ) -> Result<Config<String>> {
-        let image = service.image.clone().unwrap_or_else(|| format!("{}:latest", service_name));
+        let image = service.image.clone().unwrap_or_else(|| format!("{service_name}:latest"));
 
         let mut labels = HashMap::new();
         labels.insert(labels::PROJECT.to_string(), self.project_name.clone());
@@ -358,7 +358,7 @@ impl ComposeExecutor {
         }
 
         let env: Option<Vec<String>> = service.environment.as_ref().map(|e| {
-            e.to_map().into_iter().map(|(k, v)| format!("{}={}", k, v)).collect()
+            e.to_map().into_iter().map(|(k, v)| format!("{k}={v}")).collect()
         });
 
         let cmd = service.command.as_ref().map(|c| c.to_vec());
@@ -391,12 +391,12 @@ impl ComposeExecutor {
 
         for port in &service.ports {
             let (_, container_port, protocol) = port.parse();
-            let key = format!("{}/{}", container_port, protocol);
+            let key = format!("{container_port}/{protocol}");
             exposed.insert(key, HashMap::new());
         }
 
         for expose in &service.expose {
-            let key = format!("{}/tcp", expose);
+            let key = format!("{expose}/tcp");
             exposed.insert(key, HashMap::new());
         }
 
@@ -464,7 +464,7 @@ impl ComposeExecutor {
 
         for port in &service.ports {
             let (host_port, container_port, protocol) = port.parse();
-            let key = format!("{}/{}", container_port, protocol);
+            let key = format!("{container_port}/{protocol}");
 
             let binding = PortBinding {
                 host_ip: Some("0.0.0.0".to_string()),
@@ -608,7 +608,7 @@ fn topo_visit(
 ) -> Result<()> {
     if let Some(&in_progress) = visited.get(name) {
         if in_progress {
-            anyhow::bail!("Circular dependency detected involving service: {}", name);
+            anyhow::bail!("Circular dependency detected involving service: {name}");
         }
         return Ok(());
     }

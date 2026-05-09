@@ -425,7 +425,7 @@ impl FilterPlugin for TaintTolerationFilter {
     async fn filter(&self, pod: &Pod, node: &Node) -> bool {
         if let Some(spec) = &node.spec {
             for taint in &spec.taints {
-                let tolerated = pod.spec.as_ref().map_or(false, |ps| {
+                let tolerated = pod.spec.as_ref().is_some_and(|ps| {
                     ps.tolerations.iter().any(|t| {
                         t.key.as_deref() == Some(&taint.key)
                             && (t.operator.as_deref() == Some("Exists")
@@ -500,8 +500,8 @@ fn match_selector_requirement(
     let value = labels.get(key);
 
     match operator {
-        "In" => value.map_or(false, |v| values.contains(v)),
-        "NotIn" => value.map_or(true, |v| !values.contains(v)),
+        "In" => value.is_some_and(|v| values.contains(v)),
+        "NotIn" => value.is_none_or(|v| !values.contains(v)),
         "Exists" => value.is_some(),
         "DoesNotExist" => value.is_none(),
         "Gt" => {
@@ -540,15 +540,15 @@ fn match_field_requirement(
         "spec.unschedulable" => Some(
             node.spec
                 .as_ref()
-                .map_or(false, |s| s.unschedulable)
+                .is_some_and(|s| s.unschedulable)
                 .to_string(),
         ),
         _ => None,
     };
 
     match operator {
-        "In" => value.map_or(false, |v| values.contains(&v)),
-        "NotIn" => value.map_or(true, |v| !values.contains(&v)),
+        "In" => value.is_some_and(|v| values.contains(&v)),
+        "NotIn" => value.is_none_or(|v| !values.contains(&v)),
         _ => false,
     }
 }

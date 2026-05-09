@@ -1,6 +1,6 @@
 //! Internal API client for k1s
 
-use k1s_types::{Resource, ResourceScope};
+use k1s_types::Resource;
 use reqwest::Client;
 use thiserror::Error;
 
@@ -48,7 +48,7 @@ impl K1sClient {
 
     fn add_auth(&self, request: reqwest::RequestBuilder) -> reqwest::RequestBuilder {
         if let Some(ref token) = self.token {
-            request.header("Authorization", format!("Bearer {}", token))
+            request.header("Authorization", format!("Bearer {token}"))
         } else {
             request
         }

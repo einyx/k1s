@@ -1,6 +1,5 @@
 //! OpenAPI schema generation for kubectl validation
 
-use axum::extract::Request;
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;

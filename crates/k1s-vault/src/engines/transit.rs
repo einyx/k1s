@@ -47,9 +47,9 @@ impl TransitEngine {
     /// Create a new encryption key
     pub async fn create_key(&self, name: &str) -> VaultResult<()> {
         // Check if key exists
-        let key_path = format!("transit/keys/{}", name);
+        let key_path = format!("transit/keys/{name}");
         if self.storage.get(&key_path).await?.is_some() {
-            return Err(VaultError::InvalidInput(format!("Key {} already exists", name)));
+            return Err(VaultError::InvalidInput(format!("Key {name} already exists")));
         }
 
         // Generate new key
@@ -82,7 +82,7 @@ impl TransitEngine {
         }
 
         // Load from storage
-        let key_path = format!("transit/keys/{}", name);
+        let key_path = format!("transit/keys/{name}");
         let data = self.storage.get(&key_path).await?
             .ok_or_else(|| VaultError::KeyNotFound(name.to_string()))?;
 
@@ -109,7 +109,7 @@ impl TransitEngine {
         let entry = self.audit.request(
             AuditOperation::TransitEncrypt,
             auth,
-            format!("/transit/encrypt/{}", key_name),
+            format!("/transit/encrypt/{key_name}"),
             None,
         );
 
@@ -158,7 +158,7 @@ impl TransitEngine {
         let entry = self.audit.request(
             AuditOperation::TransitDecrypt,
             auth,
-            format!("/transit/decrypt/{}", key_name),
+            format!("/transit/decrypt/{key_name}"),
             None,
         );
 
@@ -170,7 +170,7 @@ impl TransitEngine {
             }
 
             let data = BASE64.decode(parts[2])
-                .map_err(|e| VaultError::InvalidInput(format!("Invalid base64: {}", e)))?;
+                .map_err(|e| VaultError::InvalidInput(format!("Invalid base64: {e}")))?;
 
             if data.len() < NONCE_SIZE {
                 return Err(VaultError::InvalidInput("Ciphertext too short".to_string()));
@@ -215,7 +215,7 @@ impl TransitEngine {
 
     /// Delete a key
     pub async fn delete_key(&self, name: &str) -> VaultResult<()> {
-        let key_path = format!("transit/keys/{}", name);
+        let key_path = format!("transit/keys/{name}");
         self.storage.delete(&key_path).await?;
         self.key_cache.write().unwrap().remove(name);
         tracing::info!("Deleted transit key: {}", name);

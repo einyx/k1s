@@ -2,7 +2,8 @@
 
 use k1s_types::api::admission::v1::{AdmissionRequest, AdmissionResponse};
 use k1s_types::{Pod, Deployment, DaemonSet, StatefulSet, ReplicaSet, CronJob};
-use serde_json::{json, Value};
+use base64::Engine;
+use serde_json::json;
 use tracing::debug;
 
 /// Mutates Pod resources with default values and best practices
@@ -140,7 +141,7 @@ pub fn mutate_pod(request: &AdmissionRequest) -> AdmissionResponse {
 
     if modified {
         let patch_json = serde_json::to_string(&patches).unwrap();
-        let patch_base64 = base64::encode(&patch_json);
+        let patch_base64 = base64::engine::general_purpose::STANDARD.encode(&patch_json);
         debug!("Mutated pod {} with {} patches", pod.metadata.name, patches.len());
         AdmissionResponse::mutate(request.uid.clone(), patch_base64)
             .with_audit_annotation("k1s.io/mutations".to_string(), format!("{} changes", patches.len()))
@@ -213,7 +214,7 @@ pub fn mutate_deployment(request: &AdmissionRequest) -> AdmissionResponse {
 
     if modified {
         let patch_json = serde_json::to_string(&patches).unwrap();
-        let patch_base64 = base64::encode(&patch_json);
+        let patch_base64 = base64::engine::general_purpose::STANDARD.encode(&patch_json);
         debug!("Mutated deployment {} with {} patches", deployment.metadata.name, patches.len());
         AdmissionResponse::mutate(request.uid.clone(), patch_base64)
     } else {
@@ -280,7 +281,7 @@ pub fn mutate_daemonset(request: &AdmissionRequest) -> AdmissionResponse {
 
     if modified {
         let patch_json = serde_json::to_string(&patches).unwrap();
-        let patch_base64 = base64::encode(&patch_json);
+        let patch_base64 = base64::engine::general_purpose::STANDARD.encode(&patch_json);
         debug!("Mutated daemonset {} with {} patches", daemonset.metadata.name, patches.len());
         AdmissionResponse::mutate(request.uid.clone(), patch_base64)
     } else {
@@ -290,7 +291,7 @@ pub fn mutate_daemonset(request: &AdmissionRequest) -> AdmissionResponse {
 
 /// Mutates StatefulSet resources with defaults
 pub fn mutate_statefulset(request: &AdmissionRequest) -> AdmissionResponse {
-    let mut statefulset: StatefulSet = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
+    let statefulset: StatefulSet = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
         Some(s) => s,
         None => return AdmissionResponse::allow(request.uid.clone()),
     };
@@ -299,16 +300,14 @@ pub fn mutate_statefulset(request: &AdmissionRequest) -> AdmissionResponse {
     let mut modified = false;
 
     // Ensure annotations exist
-    if !statefulset.metadata.annotations.is_empty() || request.object.as_ref()
+    if (!statefulset.metadata.annotations.is_empty() || request.object.as_ref()
         .and_then(|o| o.get("metadata"))
         .and_then(|m| m.get("annotations"))
-        .is_none()
-    {
-        if statefulset.metadata.annotations.is_empty() {
+        .is_none())
+        && statefulset.metadata.annotations.is_empty() {
             patches.push(json!({"op": "add", "path": "/metadata/annotations", "value": {}}));
             modified = true;
         }
-    }
 
     if statefulset.metadata.annotations.get("k1s.io/managed-by").is_none() {
         patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
@@ -317,7 +316,7 @@ pub fn mutate_statefulset(request: &AdmissionRequest) -> AdmissionResponse {
 
     if modified {
         let patch_json = serde_json::to_string(&patches).unwrap();
-        AdmissionResponse::mutate(request.uid.clone(), base64::encode(&patch_json))
+        AdmissionResponse::mutate(request.uid.clone(), base64::engine::general_purpose::STANDARD.encode(&patch_json))
     } else {
         AdmissionResponse::allow(request.uid.clone())
     }
@@ -325,7 +324,7 @@ pub fn mutate_statefulset(request: &AdmissionRequest) -> AdmissionResponse {
 
 /// Mutates ReplicaSet resources with defaults
 pub fn mutate_replicaset(request: &AdmissionRequest) -> AdmissionResponse {
-    let mut replicaset: ReplicaSet = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
+    let replicaset: ReplicaSet = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
         Some(r) => r,
         None => return AdmissionResponse::allow(request.uid.clone()),
     };
@@ -334,16 +333,14 @@ pub fn mutate_replicaset(request: &AdmissionRequest) -> AdmissionResponse {
     let mut modified = false;
 
     // Ensure annotations exist
-    if !replicaset.metadata.annotations.is_empty() || request.object.as_ref()
+    if (!replicaset.metadata.annotations.is_empty() || request.object.as_ref()
         .and_then(|o| o.get("metadata"))
         .and_then(|m| m.get("annotations"))
-        .is_none()
-    {
-        if replicaset.metadata.annotations.is_empty() {
+        .is_none())
+        && replicaset.metadata.annotations.is_empty() {
             patches.push(json!({"op": "add", "path": "/metadata/annotations", "value": {}}));
             modified = true;
         }
-    }
 
     if replicaset.metadata.annotations.get("k1s.io/managed-by").is_none() {
         patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
@@ -352,7 +349,7 @@ pub fn mutate_replicaset(request: &AdmissionRequest) -> AdmissionResponse {
 
     if modified {
         let patch_json = serde_json::to_string(&patches).unwrap();
-        AdmissionResponse::mutate(request.uid.clone(), base64::encode(&patch_json))
+        AdmissionResponse::mutate(request.uid.clone(), base64::engine::general_purpose::STANDARD.encode(&patch_json))
     } else {
         AdmissionResponse::allow(request.uid.clone())
     }
@@ -360,7 +357,7 @@ pub fn mutate_replicaset(request: &AdmissionRequest) -> AdmissionResponse {
 
 /// Mutates CronJob resources with defaults
 pub fn mutate_cronjob(request: &AdmissionRequest) -> AdmissionResponse {
-    let mut cronjob: CronJob = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
+    let cronjob: CronJob = match request.object.as_ref().and_then(|obj| serde_json::from_value(obj.clone()).ok()) {
         Some(c) => c,
         None => return AdmissionResponse::allow(request.uid.clone()),
     };
@@ -369,16 +366,14 @@ pub fn mutate_cronjob(request: &AdmissionRequest) -> AdmissionResponse {
     let mut modified = false;
 
     // Ensure annotations exist
-    if !cronjob.metadata.annotations.is_empty() || request.object.as_ref()
+    if (!cronjob.metadata.annotations.is_empty() || request.object.as_ref()
         .and_then(|o| o.get("metadata"))
         .and_then(|m| m.get("annotations"))
-        .is_none()
-    {
-        if cronjob.metadata.annotations.is_empty() {
+        .is_none())
+        && cronjob.metadata.annotations.is_empty() {
             patches.push(json!({"op": "add", "path": "/metadata/annotations", "value": {}}));
             modified = true;
         }
-    }
 
     if cronjob.metadata.annotations.get("k1s.io/managed-by").is_none() {
         patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
@@ -387,7 +382,7 @@ pub fn mutate_cronjob(request: &AdmissionRequest) -> AdmissionResponse {
 
     if modified {
         let patch_json = serde_json::to_string(&patches).unwrap();
-        AdmissionResponse::mutate(request.uid.clone(), base64::encode(&patch_json))
+        AdmissionResponse::mutate(request.uid.clone(), base64::engine::general_purpose::STANDARD.encode(&patch_json))
     } else {
         AdmissionResponse::allow(request.uid.clone())
     }
@@ -428,6 +423,7 @@ mod tests {
     use super::*;
     use k1s_types::api::admission::v1::{GroupVersionKind, GroupVersionResource, Operation, UserInfo};
     use k1s_types::{PodSpec, Container, ObjectMeta};
+    use serde_json::Value;
 
     fn make_request(kind: &str, object: Value) -> AdmissionRequest {
         AdmissionRequest {

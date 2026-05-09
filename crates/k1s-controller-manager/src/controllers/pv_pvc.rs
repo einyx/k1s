@@ -10,7 +10,6 @@ use k1s_storage::SledBackend;
 use k1s_types::{
     LabelSelector, PersistentVolume, PersistentVolumeClaim,
     PersistentVolumePhase, PersistentVolumeClaimPhase,
-    PersistentVolumeAccessMode,
 };
 use tracing::{debug, info, warn};
 

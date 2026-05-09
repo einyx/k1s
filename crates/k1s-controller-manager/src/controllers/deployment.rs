@@ -45,7 +45,7 @@ impl DeploymentController {
         }
 
         let hash = hasher.finish();
-        format!("{:x}", hash)[..10].to_string()
+        format!("{hash:x}")[..10].to_string()
     }
 
     /// Check if a ReplicaSet is owned by the given Deployment

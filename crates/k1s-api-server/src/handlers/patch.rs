@@ -53,10 +53,10 @@ enum PatchType {
 /// Apply a JSON Patch (RFC 6902)
 fn apply_rfc6902_patch(mut doc: Value, patch_value: Value) -> Result<Value, ApiError> {
     let patch: Patch = serde_json::from_value(patch_value)
-        .map_err(|e| ApiError::BadRequest(format!("Invalid JSON Patch: {}", e)))?;
+        .map_err(|e| ApiError::BadRequest(format!("Invalid JSON Patch: {e}")))?;
 
     apply_json_patch(&mut doc, &patch)
-        .map_err(|e| ApiError::BadRequest(format!("Failed to apply JSON Patch: {}", e)))?;
+        .map_err(|e| ApiError::BadRequest(format!("Failed to apply JSON Patch: {e}")))?;
 
     Ok(doc)
 }
@@ -189,11 +189,11 @@ pub async fn patch_namespaced<R: Resource>(
 
     // Convert to JSON value
     let mut doc: Value = serde_json::to_value(&existing)
-        .map_err(|e| ApiError::Internal(format!("Failed to serialize resource: {}", e)))?;
+        .map_err(|e| ApiError::Internal(format!("Failed to serialize resource: {e}")))?;
 
     // Parse patch body
     let patch_value: Value = serde_json::from_slice(&body)
-        .map_err(|e| ApiError::BadRequest(format!("Invalid patch body: {}", e)))?;
+        .map_err(|e| ApiError::BadRequest(format!("Invalid patch body: {e}")))?;
 
     // Apply patch based on content type
     let patch_type = detect_patch_type(&headers);
@@ -205,7 +205,7 @@ pub async fn patch_namespaced<R: Resource>(
 
     // Deserialize back to resource
     let mut patched: R = serde_json::from_value(doc)
-        .map_err(|e| ApiError::BadRequest(format!("Patched resource is invalid: {}", e)))?;
+        .map_err(|e| ApiError::BadRequest(format!("Patched resource is invalid: {e}")))?;
 
     // Ensure namespace and name are preserved
     let meta = patched.metadata_mut();
@@ -235,11 +235,11 @@ pub async fn patch_cluster<R: Resource>(
 
     // Convert to JSON value
     let mut doc: Value = serde_json::to_value(&existing)
-        .map_err(|e| ApiError::Internal(format!("Failed to serialize resource: {}", e)))?;
+        .map_err(|e| ApiError::Internal(format!("Failed to serialize resource: {e}")))?;
 
     // Parse patch body
     let patch_value: Value = serde_json::from_slice(&body)
-        .map_err(|e| ApiError::BadRequest(format!("Invalid patch body: {}", e)))?;
+        .map_err(|e| ApiError::BadRequest(format!("Invalid patch body: {e}")))?;
 
     // Apply patch based on content type
     let patch_type = detect_patch_type(&headers);
@@ -251,7 +251,7 @@ pub async fn patch_cluster<R: Resource>(
 
     // Deserialize back to resource
     let mut patched: R = serde_json::from_value(doc)
-        .map_err(|e| ApiError::BadRequest(format!("Patched resource is invalid: {}", e)))?;
+        .map_err(|e| ApiError::BadRequest(format!("Patched resource is invalid: {e}")))?;
 
     // Ensure name is preserved
     patched.metadata_mut().name = name;

@@ -5,7 +5,7 @@ use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use sled::{Db, IVec, Tree};
+use sled::{Db, Tree};
 use tokio::sync::RwLock;
 
 use crate::encryption::SecretEncryption;
@@ -99,7 +99,7 @@ impl SledBackend {
             if let Some(enc) = &self.encryption {
                 // Try to decrypt - if it fails, data might not be encrypted yet
                 let data_str = std::str::from_utf8(data)
-                    .map_err(|e| StorageError::Internal(format!("Invalid UTF-8: {}", e)))?;
+                    .map_err(|e| StorageError::Internal(format!("Invalid UTF-8: {e}")))?;
 
                 match enc.decrypt(data_str) {
                     Ok(decrypted) => Ok(decrypted),
@@ -126,7 +126,7 @@ impl SledBackend {
 
     /// Store a value in history
     fn store_history(&self, key: &str, value: &[u8], revision: i64) -> StorageResult<()> {
-        let history_key = format!("{}@{}", key, revision);
+        let history_key = format!("{key}@{revision}");
         self.history.insert(history_key.as_bytes(), value)?;
         Ok(())
     }
@@ -134,7 +134,7 @@ impl SledBackend {
     /// Get value from history at specific revision
     pub fn get_at_revision(&self, key: &str, revision: i64) -> StorageResult<Option<Vec<u8>>> {
         // Find the highest revision <= requested revision
-        let prefix = format!("{}@", key);
+        let prefix = format!("{key}@");
         let mut result: Option<(i64, Vec<u8>)> = None;
 
         for item in self.history.scan_prefix(prefix.as_bytes()) {
@@ -193,7 +193,7 @@ impl Storage for SledBackend {
         self.store_history(key, &encrypted_value, revision)?;
 
         // Store the revision for this key
-        let rev_key = format!("rev:{}", key);
+        let rev_key = format!("rev:{key}");
         self.revisions
             .insert(rev_key.as_bytes(), &revision.to_be_bytes())?;
 
@@ -212,7 +212,7 @@ impl Storage for SledBackend {
             let revision = self.next_revision()?;
 
             // Remove from revisions
-            let rev_key = format!("rev:{}", key);
+            let rev_key = format!("rev:{key}");
             self.revisions.remove(rev_key.as_bytes())?;
 
             // Emit watch event

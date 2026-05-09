@@ -189,10 +189,6 @@ users:
     client-certificate-data: {client_cert_data}
     client-key-data: {client_key_data}
 "#,
-            ca_data = ca_data,
-            server_url = server_url,
-            client_cert_data = client_cert_data,
-            client_key_data = client_key_data,
         )
     }
 }

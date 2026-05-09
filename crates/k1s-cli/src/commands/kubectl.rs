@@ -43,7 +43,7 @@ fn encode_uri_component(s: &str) -> String {
             'A'..='Z' | 'a'..='z' | '0'..='9' | '-' | '_' | '.' | '~' => result.push(c),
             _ => {
                 for b in c.to_string().as_bytes() {
-                    result.push_str(&format!("%{:02X}", b));
+                    result.push_str(&format!("%{b:02X}"));
                 }
             }
         }
@@ -261,12 +261,12 @@ pub async fn get_resources(args: GetArgs) -> Result<()> {
 
     let url = if cluster_scoped {
         if let Some(name) = &args.name {
-            format!("{}/{}/{}/{}", api_url, api_path, resource_name, name)
+            format!("{api_url}/{api_path}/{resource_name}/{name}")
         } else {
-            format!("{}/{}/{}", api_url, api_path, resource_name)
+            format!("{api_url}/{api_path}/{resource_name}")
         }
     } else if args.all_namespaces {
-        format!("{}/{}/{}", api_url, api_path, resource_name)
+        format!("{api_url}/{api_path}/{resource_name}")
     } else if let Some(name) = &args.name {
         format!(
             "{}/{}/namespaces/{}/{}/{}",
@@ -284,7 +284,7 @@ pub async fn get_resources(args: GetArgs) -> Result<()> {
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await?;
-        anyhow::bail!("API error ({}): {}", status, body);
+        anyhow::bail!("API error ({status}): {body}");
     }
 
     let body: Value = response.json().await?;
@@ -440,18 +440,17 @@ pub async fn create_resource(args: CreateArgs) -> Result<()> {
                     "metadata": { "name": name }
                 });
                 let client = build_client();
-                let url = format!("{}/api/v1/namespaces", api_url);
+                let url = format!("{api_url}/api/v1/namespaces");
                 let response = client.post(&url).json(&ns).send().await?;
                 if response.status().is_success() {
-                    println!("namespace/{} created", name);
+                    println!("namespace/{name} created");
                 } else {
                     anyhow::bail!("Failed to create namespace: {}", response.text().await?);
                 }
             }
             _ => {
                 anyhow::bail!(
-                    "Cannot create {} without a file. Use -f to specify a file.",
-                    resource
+                    "Cannot create {resource} without a file. Use -f to specify a file."
                 );
             }
         }
@@ -477,26 +476,24 @@ async fn apply_manifest(api_url: &str, content: &str, default_namespace: &str) -
             .unwrap_or(default_namespace);
 
         let url = match kind.to_lowercase().as_str() {
-            "namespace" => format!("{}/api/v1/namespaces", api_url),
-            "node" => format!("{}/api/v1/nodes", api_url),
-            "pod" => format!("{}/api/v1/namespaces/{}/pods", api_url, namespace),
-            "service" => format!("{}/api/v1/namespaces/{}/services", api_url, namespace),
-            "configmap" => format!("{}/api/v1/namespaces/{}/configmaps", api_url, namespace),
-            "secret" => format!("{}/api/v1/namespaces/{}/secrets", api_url, namespace),
+            "namespace" => format!("{api_url}/api/v1/namespaces"),
+            "node" => format!("{api_url}/api/v1/nodes"),
+            "pod" => format!("{api_url}/api/v1/namespaces/{namespace}/pods"),
+            "service" => format!("{api_url}/api/v1/namespaces/{namespace}/services"),
+            "configmap" => format!("{api_url}/api/v1/namespaces/{namespace}/configmaps"),
+            "secret" => format!("{api_url}/api/v1/namespaces/{namespace}/secrets"),
             "deployment" => {
                 format!(
-                    "{}/apis/apps/v1/namespaces/{}/deployments",
-                    api_url, namespace
+                    "{api_url}/apis/apps/v1/namespaces/{namespace}/deployments"
                 )
             }
             "daemonset" => {
                 format!(
-                    "{}/apis/apps/v1/namespaces/{}/daemonsets",
-                    api_url, namespace
+                    "{api_url}/apis/apps/v1/namespaces/{namespace}/daemonsets"
                 )
             }
             _ => {
-                println!("Unsupported resource kind: {}", kind);
+                println!("Unsupported resource kind: {kind}");
                 continue;
             }
         };
@@ -547,9 +544,9 @@ pub async fn delete_resource(args: DeleteArgs) -> Result<()> {
             let response = client.delete(&url).send().await?;
 
             if response.status().is_success() {
-                println!("{}/{} deleted", kind, name);
+                println!("{kind}/{name} deleted");
             } else {
-                println!("Error deleting {}/{}", kind, name);
+                println!("Error deleting {kind}/{name}");
             }
         }
     } else if let Some(name) = args.name {
@@ -586,12 +583,11 @@ fn build_resource_url(api_url: &str, resource: &str, name: Option<&str>, namespa
 
     match (is_namespaced, name) {
         (true, Some(n)) => format!(
-            "{}/api/v1/namespaces/{}/{}/{}",
-            api_url, namespace, plural, n
+            "{api_url}/api/v1/namespaces/{namespace}/{plural}/{n}"
         ),
-        (true, None) => format!("{}/api/v1/namespaces/{}/{}", api_url, namespace, plural),
-        (false, Some(n)) => format!("{}/api/v1/{}/{}", api_url, plural, n),
-        (false, None) => format!("{}/api/v1/{}", api_url, plural),
+        (true, None) => format!("{api_url}/api/v1/namespaces/{namespace}/{plural}"),
+        (false, Some(n)) => format!("{api_url}/api/v1/{plural}/{n}"),
+        (false, None) => format!("{api_url}/api/v1/{plural}"),
     }
 }
 
@@ -692,10 +688,10 @@ pub async fn get_logs(args: LogsArgs) -> Result<()> {
     // Build query parameters
     let mut query_params = vec![];
     if let Some(container) = &args.container {
-        query_params.push(format!("container={}", container));
+        query_params.push(format!("container={container}"));
     }
     if let Some(tail) = args.tail {
-        query_params.push(format!("tailLines={}", tail));
+        query_params.push(format!("tailLines={tail}"));
     }
     if args.follow {
         query_params.push("follow=true".to_string());
@@ -717,11 +713,11 @@ pub async fn get_logs(args: LogsArgs) -> Result<()> {
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await?;
-        anyhow::bail!("Failed to get logs ({}): {}", status, body);
+        anyhow::bail!("Failed to get logs ({status}): {body}");
     }
 
     let logs = response.text().await?;
-    print!("{}", logs);
+    print!("{logs}");
 
     Ok(())
 }
@@ -737,7 +733,7 @@ pub async fn exec_command(args: ExecArgs) -> Result<()> {
     // Build query parameters
     let mut query_params = vec![];
     if let Some(container) = &args.container {
-        query_params.push(format!("container={}", container));
+        query_params.push(format!("container={container}"));
     }
     for cmd in &args.command {
         query_params.push(format!("command={}", encode_uri_component(cmd)));
@@ -755,20 +751,20 @@ pub async fn exec_command(args: ExecArgs) -> Result<()> {
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await?;
-        anyhow::bail!("Failed to exec ({}): {}", status, body);
+        anyhow::bail!("Failed to exec ({status}): {body}");
     }
 
     let result: serde_json::Value = response.json().await?;
 
     // Print stdout
     if let Some(stdout) = result.get("stdout").and_then(|v| v.as_str()) {
-        print!("{}", stdout);
+        print!("{stdout}");
     }
 
     // Print stderr to stderr
     if let Some(stderr) = result.get("stderr").and_then(|v| v.as_str()) {
         if !stderr.is_empty() {
-            eprint!("{}", stderr);
+            eprint!("{stderr}");
         }
     }
 

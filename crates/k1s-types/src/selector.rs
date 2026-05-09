@@ -269,7 +269,7 @@ fn parse_field_requirement(s: &str) -> Result<FieldRequirement, String> {
         return Ok(FieldRequirement::Equals(field.to_string(), value.to_string()));
     }
 
-    Err(format!("Invalid field selector: {}", s))
+    Err(format!("Invalid field selector: {s}"))
 }
 
 /// Get a nested JSON field by dot-separated path

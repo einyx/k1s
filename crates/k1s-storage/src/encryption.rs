@@ -74,7 +74,7 @@ impl SecretEncryption {
         // Encrypt
         let ciphertext = self.cipher
             .encrypt(nonce, plaintext)
-            .map_err(|e| format!("Encryption failed: {}", e))?;
+            .map_err(|e| format!("Encryption failed: {e}"))?;
 
         // Prepend nonce to ciphertext
         let mut result = nonce_bytes.to_vec();
@@ -89,7 +89,7 @@ impl SecretEncryption {
     pub fn decrypt(&self, encrypted: &str) -> Result<Vec<u8>, String> {
         // Base64 decode
         let data = BASE64.decode(encrypted)
-            .map_err(|e| format!("Failed to decode base64: {}", e))?;
+            .map_err(|e| format!("Failed to decode base64: {e}"))?;
 
         if data.len() < NONCE_SIZE {
             return Err("Invalid encrypted data: too short".to_string());
@@ -102,7 +102,7 @@ impl SecretEncryption {
         // Decrypt
         self.cipher
             .decrypt(nonce, ciphertext)
-            .map_err(|e| format!("Decryption failed: {}", e))
+            .map_err(|e| format!("Decryption failed: {e}"))
     }
 }
 

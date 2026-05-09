@@ -85,13 +85,12 @@ impl ContainerdRuntime {
                 client
                     .create(request)
                     .await
-                    .map_err(|e| KubeletError::Runtime(format!("Failed to create namespace: {}", e)))?;
+                    .map_err(|e| KubeletError::Runtime(format!("Failed to create namespace: {e}")))?;
                 info!("Created containerd namespace: {}", self.namespace);
                 Ok(())
             }
             Err(e) => Err(KubeletError::Runtime(format!(
-                "Failed to check namespace: {}",
-                e
+                "Failed to check namespace: {e}"
             ))),
         }
     }
@@ -108,13 +107,13 @@ async fn connect_unix(socket_path: &str) -> KubeletResult<Channel> {
     let socket_path = socket_path.to_string();
 
     let channel = Endpoint::try_from("http://[::]:50051")
-        .map_err(|e| KubeletError::Runtime(format!("Invalid endpoint: {}", e)))?
+        .map_err(|e| KubeletError::Runtime(format!("Invalid endpoint: {e}")))?
         .connect_with_connector(service_fn(move |_: Uri| {
             let path = socket_path.clone();
             async move { UnixStream::connect(path).await }
         }))
         .await
-        .map_err(|e| KubeletError::Runtime(format!("Failed to connect to containerd: {}", e)))?;
+        .map_err(|e| KubeletError::Runtime(format!("Failed to connect to containerd: {e}")))?;
 
     Ok(channel)
 }
@@ -135,13 +134,12 @@ impl ContainerRuntime for ContainerdRuntime {
             .args(["-n", &self.namespace, "images", "pull", image])
             .output()
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to pull image: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to pull image: {e}")))?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(KubeletError::Runtime(format!(
-                "Failed to pull image: {}",
-                stderr
+                "Failed to pull image: {stderr}"
             )));
         }
 
@@ -164,7 +162,7 @@ impl ContainerRuntime for ContainerdRuntime {
             .containers
             .iter()
             .find(|c| c.name == container_name)
-            .ok_or_else(|| KubeletError::Pod(format!("Container {} not found", container_name)))?;
+            .ok_or_else(|| KubeletError::Pod(format!("Container {container_name} not found")))?;
 
         let container_id = format!(
             "k1s_{}_{}_{}",
@@ -199,7 +197,7 @@ impl ContainerRuntime for ContainerdRuntime {
             spec: Some(prost_types::Any {
                 type_url: "types.containerd.io/opencontainers/runtime-spec/1/Spec".to_string(),
                 value: serde_json::to_vec(&oci_spec)
-                    .map_err(|e| KubeletError::Runtime(format!("Failed to serialize spec: {}", e)))?,
+                    .map_err(|e| KubeletError::Runtime(format!("Failed to serialize spec: {e}")))?,
             }),
             ..Default::default()
         };
@@ -211,7 +209,7 @@ impl ContainerRuntime for ContainerdRuntime {
         client
             .create(request)
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to create container: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to create container: {e}")))?;
 
         info!("Created container: {}", container_id);
         Ok(container_id)
@@ -229,7 +227,7 @@ impl ContainerRuntime for ContainerdRuntime {
         let response = client
             .create(request)
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to create task: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to create task: {e}")))?;
 
         let pid = response.into_inner().pid;
         debug!("Created task with PID: {}", pid);
@@ -243,7 +241,7 @@ impl ContainerRuntime for ContainerdRuntime {
         client
             .start(request)
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to start task: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to start task: {e}")))?;
 
         info!("Started container: {}", container_id);
         Ok(())
@@ -298,7 +296,7 @@ impl ContainerRuntime for ContainerdRuntime {
         containers_client
             .delete(request)
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to delete container: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to delete container: {e}")))?;
 
         info!("Removed container: {}", container_id);
         Ok(())
@@ -335,8 +333,7 @@ impl ContainerRuntime for ContainerdRuntime {
             }
             Err(status) if status.code() == tonic::Code::NotFound => Ok(None),
             Err(e) => Err(KubeletError::Runtime(format!(
-                "Failed to get container: {}",
-                e
+                "Failed to get container: {e}"
             ))),
         }
     }
@@ -351,7 +348,7 @@ impl ContainerRuntime for ContainerdRuntime {
         let response = client
             .list(request)
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to list containers: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to list containers: {e}")))?;
 
         let mut result = Vec::new();
         for c in response.into_inner().containers {
@@ -388,7 +385,7 @@ impl ContainerRuntime for ContainerdRuntime {
         let output = cmd
             .output()
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to get logs: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to get logs: {e}")))?;
 
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     }
@@ -406,7 +403,7 @@ impl ContainerRuntime for ContainerdRuntime {
         let output = cmd
             .output()
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to exec: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to exec: {e}")))?;
 
         let exit_code = output.status.code().unwrap_or(-1);
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -425,7 +422,7 @@ impl ContainerRuntime for ContainerdRuntime {
         let response = client
             .list(request)
             .await
-            .map_err(|e| KubeletError::Runtime(format!("Failed to list images: {}", e)))?;
+            .map_err(|e| KubeletError::Runtime(format!("Failed to list images: {e}")))?;
 
         let result = response
             .into_inner()
@@ -536,8 +533,7 @@ fn build_oci_spec(
         // Create directory and write files
         if let Err(e) = std::fs::create_dir_all(&host_path) {
             return Err(KubeletError::Runtime(format!(
-                "Failed to create volume directory: {}",
-                e
+                "Failed to create volume directory: {e}"
             )));
         }
 
@@ -545,8 +541,7 @@ fn build_oci_spec(
             let file_path = host_path.join(filename);
             if let Err(e) = std::fs::write(&file_path, content) {
                 return Err(KubeletError::Runtime(format!(
-                    "Failed to write volume file {}: {}",
-                    filename, e
+                    "Failed to write volume file {filename}: {e}"
                 )));
             }
         }
@@ -590,7 +585,7 @@ fn build_oci_spec(
     if let Some(caps) = container_security.and_then(|s| s.capabilities.as_ref()) {
         // Add capabilities
         for cap in &caps.add {
-            let cap_name = if cap.starts_with("CAP_") { cap.clone() } else { format!("CAP_{}", cap) };
+            let cap_name = if cap.starts_with("CAP_") { cap.clone() } else { format!("CAP_{cap}") };
             for field in ["bounding", "effective", "permitted"] {
                 if let Some(arr) = capabilities[field].as_array_mut() {
                     if !arr.iter().any(|v| v.as_str() == Some(&cap_name)) {
@@ -601,7 +596,7 @@ fn build_oci_spec(
         }
         // Drop capabilities
         for cap in &caps.drop {
-            let cap_name = if cap.starts_with("CAP_") { cap.clone() } else { format!("CAP_{}", cap) };
+            let cap_name = if cap.starts_with("CAP_") { cap.clone() } else { format!("CAP_{cap}") };
             for field in ["bounding", "effective", "permitted", "ambient", "inheritable"] {
                 if let Some(arr) = capabilities[field].as_array_mut() {
                     arr.retain(|v| v.as_str() != Some(&cap_name));

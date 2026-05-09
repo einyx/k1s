@@ -12,7 +12,6 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
 
 use crate::state::AppState;
 
@@ -57,7 +56,7 @@ impl UserInfo {
     /// Create a ServiceAccount user
     pub fn service_account(namespace: &str, name: &str, uid: &str) -> Self {
         Self {
-            username: format!("system:serviceaccount:{}:{}", namespace, name),
+            username: format!("system:serviceaccount:{namespace}:{name}"),
             uid: uid.to_string(),
             groups: vec![
                 format!("system:serviceaccounts:{}", namespace),
@@ -205,12 +204,11 @@ async fn validate_token(state: &AppState, token: &str) -> Result<UserInfo, Strin
                 }
                 Ok(None) => {
                     return Err(format!(
-                        "ServiceAccount {}/{} not found",
-                        namespace, name
+                        "ServiceAccount {namespace}/{name} not found"
                     ));
                 }
                 Err(e) => {
-                    return Err(format!("Failed to verify ServiceAccount: {}", e));
+                    return Err(format!("Failed to verify ServiceAccount: {e}"));
                 }
             }
         }
@@ -231,7 +229,7 @@ fn base64_decode(input: &str) -> Result<String, String> {
 /// Generate a token for a ServiceAccount
 pub fn generate_sa_token(namespace: &str, name: &str, uid: &str) -> String {
     use base64::{engine::general_purpose::STANDARD, Engine};
-    STANDARD.encode(format!("{}:{}:{}", namespace, name, uid))
+    STANDARD.encode(format!("{namespace}:{name}:{uid}"))
 }
 
 #[cfg(test)]

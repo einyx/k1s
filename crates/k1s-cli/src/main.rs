@@ -290,7 +290,7 @@ async fn run_convert(args: ConvertArgs) -> Result<()> {
         _ => resources.to_yaml()?,
     };
 
-    println!("{}", output);
+    println!("{output}");
 
     Ok(())
 }

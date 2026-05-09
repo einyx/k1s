@@ -3,7 +3,7 @@
 use axum::extract::{Path, Query, State};
 use axum::response::sse::{Event, Sse};
 use axum::response::IntoResponse;
-use futures::stream::{self, Stream};
+use futures::stream::{self};
 use std::convert::Infallible;
 use tokio_stream::StreamExt;
 
@@ -22,7 +22,7 @@ pub async fn watch_namespaced<R: Resource>(
     Query(_params): Query<ListParams>,
 ) -> ApiResult<impl IntoResponse> {
     let store = ResourceStore::<R>::new(state.storage.clone());
-    let mut watcher = store.watch(Some(&namespace)).await?;
+    let watcher = store.watch(Some(&namespace)).await?;
 
     let stream = stream::unfold(watcher, |mut w| async move {
         match w.next().await {
@@ -43,7 +43,7 @@ pub async fn watch_cluster<R: Resource>(
     Query(_params): Query<ListParams>,
 ) -> ApiResult<impl IntoResponse> {
     let store = ResourceStore::<R>::new(state.storage.clone());
-    let mut watcher = store.watch(None).await?;
+    let watcher = store.watch(None).await?;
 
     let stream = stream::unfold(watcher, |mut w| async move {
         match w.next().await {

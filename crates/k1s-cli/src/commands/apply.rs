@@ -294,7 +294,7 @@ pub async fn run_down(args: DownArgs) -> Result<()> {
 
     executor.down(&compose, args.volumes).await?;
 
-    println!("Stopped services for project {}", project);
+    println!("Stopped services for project {project}");
 
     Ok(())
 }
@@ -312,7 +312,7 @@ pub async fn run_ps(args: PsArgs) -> Result<()> {
     let containers = executor.ps().await?;
 
     if containers.is_empty() {
-        println!("No containers found for project {}", project);
+        println!("No containers found for project {project}");
         return Ok(());
     }
 
@@ -339,7 +339,7 @@ async fn apply_resource<T: serde::Serialize>(
     name: &str,
     resource: &T,
 ) -> Result<()> {
-    let url = format!("{}/api/v1/namespaces/{}/{}", api_url, namespace, resource_type);
+    let url = format!("{api_url}/api/v1/namespaces/{namespace}/{resource_type}");
 
     match client.post(&url).json(resource).send().await {
         Ok(resp) if resp.status().is_success() => {
@@ -361,14 +361,14 @@ async fn apply_resource<T: serde::Serialize>(
 
 fn build_api_url(api_url: &str, kind: &str, namespace: &str) -> String {
     match kind.to_lowercase().as_str() {
-        "namespace" => format!("{}/api/v1/namespaces", api_url),
-        "node" => format!("{}/api/v1/nodes", api_url),
-        "pod" => format!("{}/api/v1/namespaces/{}/pods", api_url, namespace),
-        "service" => format!("{}/api/v1/namespaces/{}/services", api_url, namespace),
-        "configmap" => format!("{}/api/v1/namespaces/{}/configmaps", api_url, namespace),
-        "secret" => format!("{}/api/v1/namespaces/{}/secrets", api_url, namespace),
-        "deployment" => format!("{}/apis/apps/v1/namespaces/{}/deployments", api_url, namespace),
-        "daemonset" => format!("{}/apis/apps/v1/namespaces/{}/daemonsets", api_url, namespace),
+        "namespace" => format!("{api_url}/api/v1/namespaces"),
+        "node" => format!("{api_url}/api/v1/nodes"),
+        "pod" => format!("{api_url}/api/v1/namespaces/{namespace}/pods"),
+        "service" => format!("{api_url}/api/v1/namespaces/{namespace}/services"),
+        "configmap" => format!("{api_url}/api/v1/namespaces/{namespace}/configmaps"),
+        "secret" => format!("{api_url}/api/v1/namespaces/{namespace}/secrets"),
+        "deployment" => format!("{api_url}/apis/apps/v1/namespaces/{namespace}/deployments"),
+        "daemonset" => format!("{api_url}/apis/apps/v1/namespaces/{namespace}/daemonsets"),
         _ => format!("{}/api/v1/namespaces/{}/{}", api_url, namespace, kind.to_lowercase()),
     }
 }

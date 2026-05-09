@@ -66,7 +66,7 @@ impl KvEngine {
         let entry = self.audit.request(
             AuditOperation::KvRead,
             auth,
-            format!("/kv/data/{}", path),
+            format!("/kv/data/{path}"),
             None,
         );
 
@@ -75,19 +75,19 @@ impl KvEngine {
             let version = version.unwrap_or(metadata.current_version);
 
             // Load version
-            let version_path = format!("kv/data/{}/v{}", path, version);
+            let version_path = format!("kv/data/{path}/v{version}");
             let data = self.storage.get(&version_path).await?
-                .ok_or_else(|| VaultError::SecretNotFound(format!("{} version {}", path, version)))?;
+                .ok_or_else(|| VaultError::SecretNotFound(format!("{path} version {version}")))?;
 
             let secret_version: SecretVersion = serde_json::from_slice(&data)
                 .map_err(|e| VaultError::Internal(e.to_string()))?;
 
             // Check if deleted or destroyed
             if secret_version.destroyed {
-                return Err(VaultError::SecretNotFound(format!("{} (destroyed)", path)));
+                return Err(VaultError::SecretNotFound(format!("{path} (destroyed)")));
             }
             if secret_version.deletion_time.is_some() {
-                return Err(VaultError::SecretNotFound(format!("{} (deleted)", path)));
+                return Err(VaultError::SecretNotFound(format!("{path} (deleted)")));
             }
 
             Ok(SecretData {
@@ -128,7 +128,7 @@ impl KvEngine {
         let entry = self.audit.request(
             AuditOperation::KvWrite,
             auth,
-            format!("/kv/data/{}", path),
+            format!("/kv/data/{path}"),
             Some(serde_json::json!({"keys": data.keys().collect::<Vec<_>>()})),
         );
 
@@ -167,7 +167,7 @@ impl KvEngine {
             };
 
             // Store version
-            let version_path = format!("kv/data/{}/v{}", path, new_version);
+            let version_path = format!("kv/data/{path}/v{new_version}");
             let version_data = serde_json::to_vec(&secret_version)
                 .map_err(|e| VaultError::Internal(e.to_string()))?;
             self.storage.put(&version_path, version_data).await?;
@@ -179,13 +179,13 @@ impl KvEngine {
             // Cleanup old versions if needed
             if new_version > metadata.max_versions {
                 let old_version = new_version - metadata.max_versions;
-                let old_path = format!("kv/data/{}/v{}", path, old_version);
+                let old_path = format!("kv/data/{path}/v{old_version}");
                 let _ = self.storage.delete(&old_path).await;
                 metadata.oldest_version = old_version + 1;
             }
 
             // Store metadata
-            let metadata_path = format!("kv/metadata/{}", path);
+            let metadata_path = format!("kv/metadata/{path}");
             let metadata_data = serde_json::to_vec(&metadata)
                 .map_err(|e| VaultError::Internal(e.to_string()))?;
             self.storage.put(&metadata_path, metadata_data).await?;
@@ -224,7 +224,7 @@ impl KvEngine {
         let entry = self.audit.request(
             AuditOperation::KvDelete,
             auth,
-            format!("/kv/data/{}", path),
+            format!("/kv/data/{path}"),
             versions.as_ref().map(|v| serde_json::json!({"versions": v})),
         );
 
@@ -233,7 +233,7 @@ impl KvEngine {
             let versions = versions.unwrap_or_else(|| vec![metadata.current_version]);
 
             for version in versions {
-                let version_path = format!("kv/data/{}/v{}", path, version);
+                let version_path = format!("kv/data/{path}/v{version}");
                 if let Some(data) = self.storage.get(&version_path).await? {
                     let mut secret_version: SecretVersion = serde_json::from_slice(&data)
                         .map_err(|e| VaultError::Internal(e.to_string()))?;
@@ -266,7 +266,7 @@ impl KvEngine {
 
     /// Get secret metadata
     async fn get_metadata(&self, path: &str) -> VaultResult<SecretMetadata> {
-        let metadata_path = format!("kv/metadata/{}", path);
+        let metadata_path = format!("kv/metadata/{path}");
         let data = self.storage.get(&metadata_path).await?
             .ok_or_else(|| VaultError::SecretNotFound(path.to_string()))?;
 
@@ -276,7 +276,7 @@ impl KvEngine {
 
     /// List secrets at a path
     pub async fn list(&self, prefix: &str) -> VaultResult<Vec<String>> {
-        let search_prefix = format!("kv/metadata/{}", prefix);
+        let search_prefix = format!("kv/metadata/{prefix}");
         let entries = self.storage.list(&search_prefix).await?;
 
         let secrets: Vec<String> = entries
