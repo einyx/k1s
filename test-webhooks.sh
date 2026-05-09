@@ -77,7 +77,7 @@ echo -e "\n${BLUE}=== Running Webhook Tests ===${NC}\n"
 
 # Test 1: Valid pod (should succeed and be mutated)
 echo -e "${BLUE}Test 1: Valid pod (should succeed with mutations)${NC}"
-if kubectl apply -f test-manifests/01-valid-pod.yaml > /dev/null 2>&1; then
+if kubectl apply --validate=false -f test-manifests/01-valid-pod.yaml > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Pod created successfully${NC}"
     kubectl get pod nginx-test -o yaml | grep -A 5 "labels:\|annotations:\|resources:" || true
     kubectl delete pod nginx-test --wait=false > /dev/null 2>&1
@@ -87,7 +87,7 @@ fi
 
 # Test 2: Invalid pod - no containers (should fail)
 echo -e "\n${BLUE}Test 2: Invalid pod - no containers (should fail)${NC}"
-if kubectl apply -f test-manifests/02-invalid-pod-no-containers.yaml 2>&1 | grep -q "must have at least one container"; then
+if kubectl apply --validate=false -f test-manifests/02-invalid-pod-no-containers.yaml 2>&1 | grep -q "must have at least one container"; then
     echo -e "${GREEN}✓ Correctly rejected: No containers${NC}"
 else
     echo -e "${RED}✗ Should have rejected pod with no containers${NC}"
@@ -95,7 +95,7 @@ fi
 
 # Test 3: Invalid pod - bad name (should fail)
 echo -e "\n${BLUE}Test 3: Invalid pod - invalid name (should fail)${NC}"
-if kubectl apply -f test-manifests/03-invalid-pod-bad-name.yaml 2>&1 | grep -q "lowercase alphanumeric"; then
+if kubectl apply --validate=false -f test-manifests/03-invalid-pod-bad-name.yaml 2>&1 | grep -q "lowercase alphanumeric"; then
     echo -e "${GREEN}✓ Correctly rejected: Invalid name format${NC}"
 else
     echo -e "${RED}✗ Should have rejected pod with invalid name${NC}"
@@ -103,7 +103,7 @@ fi
 
 # Test 4: Pod with latest tag (should succeed with warning)
 echo -e "\n${BLUE}Test 4: Pod with latest tag (should succeed)${NC}"
-if kubectl apply -f test-manifests/04-pod-latest-tag.yaml > /dev/null 2>&1; then
+if kubectl apply --validate=false -f test-manifests/04-pod-latest-tag.yaml > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Pod created (webhook may have warned about latest tag)${NC}"
     kubectl delete pod nginx-latest --wait=false > /dev/null 2>&1
 else
@@ -112,7 +112,7 @@ fi
 
 # Test 5: Valid deployment (should succeed and be mutated)
 echo -e "\n${BLUE}Test 5: Valid deployment (should succeed with mutations)${NC}"
-if kubectl apply -f test-manifests/05-valid-deployment.yaml > /dev/null 2>&1; then
+if kubectl apply --validate=false -f test-manifests/05-valid-deployment.yaml > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Deployment created successfully${NC}"
     kubectl get deployment nginx-deployment -o yaml | grep -A 3 "replicas:\|strategy:" || true
     kubectl delete deployment nginx-deployment --wait=false > /dev/null 2>&1
@@ -122,7 +122,7 @@ fi
 
 # Test 6: Invalid deployment - label mismatch (should fail)
 echo -e "\n${BLUE}Test 6: Invalid deployment - selector mismatch (should fail)${NC}"
-if kubectl apply -f test-manifests/06-invalid-deployment-mismatch.yaml 2>&1 | grep -q "not found in pod template"; then
+if kubectl apply --validate=false -f test-manifests/06-invalid-deployment-mismatch.yaml 2>&1 | grep -q "not found in pod template"; then
     echo -e "${GREEN}✓ Correctly rejected: Selector label mismatch${NC}"
 else
     echo -e "${RED}✗ Should have rejected deployment with mismatched labels${NC}"

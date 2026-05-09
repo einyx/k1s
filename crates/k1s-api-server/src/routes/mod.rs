@@ -16,6 +16,8 @@ pub fn build_router(state: AppState) -> Router {
         // OpenAPI schema
         .route("/openapi/v2", get(openapi::openapi_v2))
         .route("/openapi/v3", get(openapi::openapi_v3))
+        // Server version
+        .route("/version", get(server_version))
         // API discovery
         .route("/api", get(api_versions))
         .route("/api/v1", get(api_v1_resources))
@@ -37,6 +39,20 @@ pub fn build_router(state: AppState) -> Router {
         // Vault API
         .nest("/v1/vault", vault_routes())
         .with_state(state)
+}
+
+async fn server_version() -> axum::Json<serde_json::Value> {
+    axum::Json(serde_json::json!({
+        "major": "1",
+        "minor": "33",
+        "gitVersion": concat!("v1.33.0-k1s-", env!("CARGO_PKG_VERSION")),
+        "gitCommit": "",
+        "gitTreeState": "clean",
+        "buildDate": "",
+        "goVersion": "",
+        "compiler": "rustc",
+        "platform": format!("{}/{}", std::env::consts::OS, std::env::consts::ARCH),
+    }))
 }
 
 async fn api_versions() -> axum::Json<serde_json::Value> {

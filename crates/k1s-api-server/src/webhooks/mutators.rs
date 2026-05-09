@@ -179,8 +179,8 @@ pub fn mutate_deployment(request: &AdmissionRequest) -> AdmissionResponse {
                 "value": {
                     "type": "RollingUpdate",
                     "rollingUpdate": {
-                        "maxUnavailable": "25%",
-                        "maxSurge": "25%"
+                        "maxUnavailable": 1,
+                        "maxSurge": 1
                     }
                 }
             }));

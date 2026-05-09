@@ -8,9 +8,17 @@ use serde_json::{json, Value};
 /// Generate a minimal OpenAPI v2 (Swagger) schema for k1s resources
 /// This provides enough information for kubectl to validate resources
 /// Note: kubectl may request protobuf format, but we always return JSON which it can handle
-pub async fn openapi_v2(_headers: HeaderMap) -> impl IntoResponse {
-    // Note: We ignore the Accept header and always return JSON
-    // kubectl accepts JSON even if it prefers protobuf
+pub async fn openapi_v2(headers: HeaderMap) -> impl IntoResponse {
+    // If the client only accepts protobuf, return 406 so it retries with JSON.
+    // kubectl prefers protobuf but falls back to JSON on Not Acceptable.
+    let accept = headers.get("accept").and_then(|h| h.to_str().ok()).unwrap_or("");
+    if accept.contains("protobuf") && !accept.contains("application/json") && !accept.contains("*/*") {
+        return Response::builder()
+            .status(StatusCode::NOT_ACCEPTABLE)
+            .body(axum::body::Body::empty())
+            .unwrap();
+    }
+
     let schema = json!({
         "swagger": "2.0",
         "info": {
