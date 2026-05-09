@@ -2,7 +2,6 @@
 //!
 //! Manages ReplicaSets for rolling updates and declarative pod management.
 
-use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use async_trait::async_trait;
@@ -348,6 +347,7 @@ impl Controller for DeploymentController {
 mod tests {
     use super::*;
     use k1s_types::PodSpec;
+    use std::collections::BTreeMap;
 
     #[test]
     fn test_template_hash_consistency() {

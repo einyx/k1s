@@ -60,7 +60,7 @@ pub fn mutate_pod(request: &AdmissionRequest) -> AdmissionResponse {
     }
 
     // Add default annotations
-    if pod.metadata.annotations.get("k1s.io/managed-by").is_none() {
+    if !pod.metadata.annotations.contains_key("k1s.io/managed-by") {
         pod.metadata.annotations.insert(
             "k1s.io/managed-by".to_string(),
             "k1s".to_string(),
@@ -199,7 +199,7 @@ pub fn mutate_deployment(request: &AdmissionRequest) -> AdmissionResponse {
     }
 
     // Add management annotations
-    if deployment.metadata.annotations.get("k1s.io/managed-by").is_none() {
+    if !deployment.metadata.annotations.contains_key("k1s.io/managed-by") {
         deployment.metadata.annotations.insert(
             "k1s.io/managed-by".to_string(),
             "k1s".to_string(),
@@ -249,7 +249,7 @@ pub fn mutate_daemonset(request: &AdmissionRequest) -> AdmissionResponse {
     }
 
     // Add management annotations
-    if daemonset.metadata.annotations.get("k1s.io/managed-by").is_none() {
+    if !daemonset.metadata.annotations.contains_key("k1s.io/managed-by") {
         daemonset.metadata.annotations.insert(
             "k1s.io/managed-by".to_string(),
             "k1s".to_string(),
@@ -309,7 +309,7 @@ pub fn mutate_statefulset(request: &AdmissionRequest) -> AdmissionResponse {
             modified = true;
         }
 
-    if statefulset.metadata.annotations.get("k1s.io/managed-by").is_none() {
+    if !statefulset.metadata.annotations.contains_key("k1s.io/managed-by") {
         patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
         modified = true;
     }
@@ -342,7 +342,7 @@ pub fn mutate_replicaset(request: &AdmissionRequest) -> AdmissionResponse {
             modified = true;
         }
 
-    if replicaset.metadata.annotations.get("k1s.io/managed-by").is_none() {
+    if !replicaset.metadata.annotations.contains_key("k1s.io/managed-by") {
         patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
         modified = true;
     }
@@ -375,7 +375,7 @@ pub fn mutate_cronjob(request: &AdmissionRequest) -> AdmissionResponse {
             modified = true;
         }
 
-    if cronjob.metadata.annotations.get("k1s.io/managed-by").is_none() {
+    if !cronjob.metadata.annotations.contains_key("k1s.io/managed-by") {
         patches.push(json!({"op": "add", "path": "/metadata/annotations/k1s.io~1managed-by", "value": "k1s"}));
         modified = true;
     }

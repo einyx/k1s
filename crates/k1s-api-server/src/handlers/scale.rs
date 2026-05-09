@@ -5,7 +5,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 
 use k1s_storage::ResourceStore;
-use k1s_types::{apps_v1::StatefulSet, Deployment, ReplicaSet, Resource};
+use k1s_types::{apps_v1::StatefulSet, Deployment, ReplicaSet};
 
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;

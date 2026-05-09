@@ -5,7 +5,6 @@ use axum::response::sse::{Event, Sse};
 use axum::response::IntoResponse;
 use futures::stream::{self};
 use std::convert::Infallible;
-use tokio_stream::StreamExt;
 
 use k1s_storage::backend::ResourceStore;
 use k1s_storage::{WatchEvent, WatchEventType};
